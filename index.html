@@ -1,0 +1,1057 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#13202E">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icons/icon-192.png">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<meta name="description" content="Loop Commute: plan multi-city trips worldwide with flights, transfers, hotels, food, visas and holidays.">
+<style>:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0;font:14px system-ui,sans-serif}img{max-width:100%}[hidden]{display:none!important}</style>
+<title>Loop Commute</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@600;800&family=Figtree:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>
+/* Layout: a dark departure-board band holds the route, the search and the multi-city stop builder; below it, a tabbed desk of panels. */
+:root{
+  --bg:#EEF1F4; --surface:#FFFFFF; --surface-2:#F6F8FA; --ink:#13202E; --muted:#5A6878; --line:#D8DEE5;
+  --accent:#D9822B; --accent-ink:#9C540F; --accent-soft:#FBEBD8; --teal:#0E7C86; --teal-soft:#DDF0F1;
+  --board:#13202E; --board-2:#1C2D40; --board-fg:#F3E6CC; --board-muted:#9DB0C4;
+  --good:#1D8048; --warn:#B9740B; --bad:#BC3326; --good-soft:#DFF2E6; --warn-soft:#FAEED6; --bad-soft:#F8E0DD;
+  --f-display:"Big Shoulders Display","Arial Narrow",Impact,sans-serif;
+  --f-body:"Figtree",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --f-mono:"JetBrains Mono",ui-monospace,"SFMono-Regular",Menlo,monospace;
+  --r:10px;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#0C131B; --surface:#141E29; --surface-2:#1A2633; --ink:#E6EBF0; --muted:#94A3B4; --line:#263445;
+  --accent:#F0A04B; --accent-ink:#F4B067; --accent-soft:#3A2A17; --teal:#43BAC4; --teal-soft:#14343A;
+  --board:#070C12; --board-2:#111C28; --board-fg:#F3E6CC; --board-muted:#8EA1B6;
+  --good:#52C784; --warn:#E8B451; --bad:#F0705F; --good-soft:#163323; --warn-soft:#3A2E14; --bad-soft:#3E1D19;
+  color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0C131B; --surface:#141E29; --surface-2:#1A2633; --ink:#E6EBF0; --muted:#94A3B4; --line:#263445;
+  --accent:#F0A04B; --accent-ink:#F4B067; --accent-soft:#3A2A17; --teal:#43BAC4; --teal-soft:#14343A;
+  --board:#070C12; --board-2:#111C28; --board-fg:#F3E6CC; --board-muted:#8EA1B6;
+  --good:#52C784; --warn:#E8B451; --bad:#F0705F; --good-soft:#163323; --warn-soft:#3A2E14; --bad-soft:#3E1D19;
+  color-scheme:dark}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:15px;line-height:1.5;-webkit-font-smoothing:antialiased}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:10;background:var(--board)}
+.wrap{max-width:1180px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+button,input,select,textarea{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.mono{font-family:var(--f-mono);font-variant-numeric:tabular-nums}
+.num{font-variant-numeric:tabular-nums}
+h1,h2,h3{text-wrap:balance;margin:0}
+a{color:var(--teal)}
+
+/* board */
+.board{background:var(--board);color:var(--board-fg)}
+.board .wrap{padding-block:18px 0}
+.brand{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.logo{font-family:var(--f-display);font-weight:800;font-size:22px;letter-spacing:.06em;text-transform:uppercase;display:flex;align-items:center;gap:10px}
+.logo i{display:inline-block;width:26px;height:26px;border-radius:50%;border:2px solid var(--accent);position:relative}
+.logo i::after{content:"";position:absolute;left:50%;top:-4px;bottom:-4px;width:2px;background:var(--accent);transform:translateX(-50%) rotate(35deg)}
+.asof{font-family:var(--f-mono);font-size:11.5px;color:var(--board-muted);letter-spacing:.04em}
+.route{display:flex;align-items:flex-end;gap:14px;flex-wrap:wrap;margin-top:18px}
+.flap{display:flex;gap:4px}
+.flap span{font-family:var(--f-mono);font-weight:600;font-size:clamp(30px,7vw,52px);line-height:1;background:var(--board-2);padding:8px 6px;border-radius:5px;min-width:1.05em;text-align:center;position:relative;color:var(--board-fg)}
+.flap span::after{content:"";position:absolute;left:0;right:0;top:50%;height:1px;background:var(--board)}
+.route .arrow{font-size:30px;color:var(--accent);padding-bottom:10px}
+.route .cities{font-size:14px;color:var(--board-muted);padding-bottom:6px;min-width:0}
+.route .cities b{color:var(--board-fg);font-weight:600}
+.search{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;margin-top:18px;padding-bottom:16px}
+.field{display:flex;flex-direction:column;gap:4px;min-width:0}
+.field label{font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--board-muted);font-weight:600}
+.field input,.field select{background:var(--board-2);border:1px solid #2B3E54;border-radius:8px;padding:9px 10px;color:var(--board-fg);width:100%;min-width:0;color-scheme:dark}
+.tabs{display:flex;gap:2px;overflow-x:auto;scrollbar-width:none;border-top:1px solid #23344A}
+.tabs::-webkit-scrollbar{display:none}
+.tabs a{flex:none;color:var(--board-muted);text-decoration:none;padding:12px 14px;font-weight:600;font-size:14px;border-bottom:3px solid transparent}
+.tabs a:hover{color:var(--board-fg)}
+.tabs a[aria-current="page"]{color:var(--board-fg);border-bottom-color:var(--accent)}
+
+main .wrap{padding-block:22px 60px}
+.view{display:grid;gap:18px}
+.sec-head{display:flex;justify-content:space-between;align-items:flex-end;gap:12px;flex-wrap:wrap}
+.sec-head h2{font-family:var(--f-display);font-weight:800;font-size:30px;letter-spacing:.01em;text-transform:uppercase;line-height:1}
+.sec-head p{margin:4px 0 0;color:var(--muted);max-width:68ch}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:18px;min-width:0}
+.panel h3{font-size:15px;font-weight:700;margin-bottom:10px}
+.eyebrow{font-size:10.5px;letter-spacing:.13em;text-transform:uppercase;color:var(--muted);font-weight:700}
+.grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,340px),1fr));gap:18px}
+.grid3{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,250px),1fr));gap:14px}
+.note{font-size:12.5px;color:var(--muted)}
+.pill{display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:600;padding:3px 9px;border-radius:999px;background:var(--surface-2);border:1px solid var(--line);white-space:nowrap}
+.pill.good{background:var(--good-soft);color:var(--good);border-color:transparent}
+.pill.warn{background:var(--warn-soft);color:var(--warn);border-color:transparent}
+.pill.bad{background:var(--bad-soft);color:var(--bad);border-color:transparent}
+.pill.acc{background:var(--accent-soft);color:var(--accent-ink);border-color:transparent}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;border:1px solid var(--line);background:var(--surface);padding:8px 14px;border-radius:8px;font-weight:600;cursor:pointer;text-decoration:none;color:var(--ink);font-size:14px}
+.btn:hover{border-color:var(--muted)}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:#1B1206}
+.btn.primary:hover{filter:brightness(1.05)}
+.btn.small{padding:5px 10px;font-size:13px}
+.row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+
+/* verdict */
+.verdict{display:grid;grid-template-columns:auto 1fr;gap:18px;align-items:center}
+.gauge{width:120px;height:120px;position:relative}
+.gauge svg{width:100%;height:100%;transform:rotate(-90deg)}
+.gauge .v{position:absolute;inset:0;display:grid;place-items:center;text-align:center}
+.gauge .v b{font-family:var(--f-display);font-size:40px;font-weight:800;line-height:1}
+.gauge .v small{display:block;font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
+.verdict h3{font-family:var(--f-display);font-size:26px;text-transform:uppercase;letter-spacing:.01em;margin-bottom:6px}
+.signals{display:grid;gap:8px;margin-top:14px}
+.signal{display:grid;grid-template-columns:10px 1fr auto;gap:10px;align-items:start;font-size:14px;padding:8px 0;border-top:1px dashed var(--line)}
+.signal .dot{width:10px;height:10px;border-radius:50%;margin-top:6px}
+.dot.good{background:var(--good)}.dot.warn{background:var(--warn)}.dot.bad{background:var(--bad)}
+.signal small{display:block;color:var(--muted);font-size:12.5px}
+
+/* cost */
+.total{font-family:var(--f-display);font-weight:800;font-size:44px;line-height:1}
+.stack{display:flex;height:14px;border-radius:7px;overflow:hidden;margin:14px 0 10px;background:var(--surface-2)}
+.stack i{display:block;height:100%}
+.legend{display:grid;gap:6px}
+.legend div{display:grid;grid-template-columns:12px 1fr auto;gap:10px;align-items:center;font-size:14px}
+.legend s{width:12px;height:12px;border-radius:3px;display:block;text-decoration:none}
+
+/* tables / provider list */
+.tbl-wrap{overflow-x:auto;margin:0 -4px}
+table{width:100%;border-collapse:collapse;font-size:14px}
+th{text-align:left;font-size:10.5px;letter-spacing:.11em;text-transform:uppercase;color:var(--muted);font-weight:700;padding:8px 10px;border-bottom:1px solid var(--line);white-space:nowrap}
+td{padding:10px;border-bottom:1px solid var(--line);vertical-align:middle}
+tr:last-child td{border-bottom:0}
+td.r,th.r{text-align:right}
+tr.best td{background:var(--accent-soft)}
+.prov{display:flex;align-items:center;gap:10px;font-weight:600;white-space:nowrap}
+.prov .mk{width:28px;height:28px;border-radius:7px;display:grid;place-items:center;font-family:var(--f-mono);font-size:11px;font-weight:600;color:#fff;flex:none}
+
+/* boarding pass */
+.pass{display:grid;grid-template-columns:1fr auto;border:1px solid var(--line);border-radius:12px;background:var(--surface);overflow:hidden}
+.pass .main{padding:16px 18px;display:grid;gap:10px;min-width:0}
+.pass .stub{border-left:2px dashed var(--line);padding:16px 18px;display:grid;align-content:center;gap:4px;background:var(--surface-2);text-align:right;min-width:150px}
+.pass .codes{display:flex;align-items:center;gap:12px;font-family:var(--f-mono);font-size:26px;font-weight:600}
+.pass .codes .ln{flex:1;height:1px;background:var(--line);position:relative;min-width:30px}
+.pass .codes .ln::after{content:"✈";position:absolute;left:50%;top:-11px;font-size:14px;transform:translateX(-50%);color:var(--accent-ink);background:var(--surface);padding:0 4px}
+.kv{display:flex;gap:18px;flex-wrap:wrap;font-size:13px}
+.kv div span{display:block;font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);font-weight:700}
+.kv div b{font-weight:600}
+
+/* date strip */
+.strip{display:flex;gap:6px;overflow-x:auto;padding-bottom:6px}
+.day{flex:none;width:62px;border:1px solid var(--line);border-radius:8px;padding:8px 4px 6px;text-align:center;background:var(--surface);cursor:pointer;display:grid;gap:3px}
+.day small{font-size:10.5px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em}
+.day b{font-size:15px}
+.day .p{font-family:var(--f-mono);font-size:11px}
+.day .bar{height:4px;border-radius:2px;background:var(--line)}
+.day.sel{border-color:var(--accent);box-shadow:inset 0 0 0 1px var(--accent)}
+.day.low .p{color:var(--good);font-weight:600}
+.day.high .p{color:var(--bad)}
+.day:hover{border-color:var(--muted)}
+
+/* chart */
+.chart{width:100%;overflow-x:auto}
+.chart svg{display:block;width:100%;min-width:520px;height:auto}
+.chart text{fill:var(--muted);font-family:var(--f-mono);font-size:11px}
+
+/* hotels tier picker */
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:9px;overflow:hidden;background:var(--surface);flex-wrap:wrap}
+.seg button{border:0;background:transparent;padding:7px 12px;cursor:pointer;font-weight:600;font-size:13.5px;color:var(--muted)}
+.seg button[aria-pressed="true"]{background:var(--ink);color:var(--surface)}
+.tier{display:grid;gap:6px;padding:14px;border:1px solid var(--line);border-radius:10px;background:var(--surface);cursor:pointer;text-align:left}
+.tier[aria-pressed="true"]{border-color:var(--accent);box-shadow:inset 0 0 0 1px var(--accent)}
+.tier .stars{color:var(--accent-ink);letter-spacing:2px;font-size:13px}
+.tier b{font-size:22px;font-family:var(--f-display);font-weight:800}
+
+/* itinerary */
+.days{display:grid;gap:14px}
+.dcard{border:1px solid var(--line);border-radius:10px;background:var(--surface);overflow:hidden}
+.dcard header{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:10px 14px;background:var(--surface-2);border-bottom:1px solid var(--line);flex-wrap:wrap}
+.dcard header b{font-family:var(--f-display);font-size:20px;text-transform:uppercase;font-weight:800}
+.dcard ol{list-style:none;margin:0;padding:6px 14px}
+.dcard li{display:grid;grid-template-columns:78px 1fr auto;gap:10px;align-items:center;padding:8px 0;border-bottom:1px dashed var(--line)}
+.dcard li:last-child{border-bottom:0}
+.dcard li .t{font-family:var(--f-mono);font-size:12px;color:var(--muted)}
+.dcard li .acts{display:flex;gap:2px}
+.icon-btn{border:0;background:transparent;cursor:pointer;color:var(--muted);padding:4px 6px;border-radius:6px;font-size:14px;line-height:1}
+.icon-btn:hover{background:var(--surface-2);color:var(--ink)}
+.add-row{display:flex;gap:8px;padding:8px 14px 12px;flex-wrap:wrap}
+.add-row input,.add-row select{border:1px solid var(--line);background:var(--surface);border-radius:7px;padding:6px 8px;min-width:0}
+.add-row input{flex:1 1 160px}
+.hol-flag{font-size:12px;color:var(--warn);font-weight:600}
+
+/* visa */
+.vfilters{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+.vfilters input,.vfilters select{border:1px solid var(--line);background:var(--surface);border-radius:8px;padding:8px 10px;min-width:0}
+.vcard{display:grid;grid-template-columns:1fr auto;gap:10px;align-items:start}
+.vbig{font-family:var(--f-display);font-weight:800;font-size:34px;line-height:1}
+
+/* holidays */
+.chips{display:flex;gap:6px;flex-wrap:wrap}
+.chip{border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:4px 10px;font-size:13px;cursor:pointer;font-weight:600;color:var(--muted);display:inline-flex;gap:6px;align-items:center}
+.chip[aria-pressed="true"]{color:var(--ink);border-color:var(--ink)}
+.chip s{width:9px;height:9px;border-radius:50%;display:inline-block;text-decoration:none}
+.cal{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:4px}
+.cal .h{font-size:10.5px;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);text-align:center;font-weight:700;padding:4px 0}
+.cal .c{min-height:64px;border:1px solid var(--line);border-radius:7px;padding:4px 5px;background:var(--surface);font-size:12px;display:flex;flex-direction:column;gap:2px;min-width:0}
+.cal .c.out{visibility:hidden}
+.cal .c.trip{background:var(--accent-soft);border-color:var(--accent)}
+.cal .c.we .dn{color:var(--muted)}
+.cal .c .dn{font-family:var(--f-mono);font-weight:600}
+.cal .c .hs{display:flex;gap:3px;flex-wrap:wrap}
+.cal .c .hs s{width:8px;height:8px;border-radius:50%;text-decoration:none}
+.cal .c .hn{font-size:10.5px;line-height:1.2;color:var(--ink);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.lw{display:grid;grid-template-columns:auto 1fr auto;gap:12px;align-items:center;padding:10px 0;border-top:1px dashed var(--line)}
+.lw .d{font-family:var(--f-mono);font-size:12.5px;text-align:center;border:1px solid var(--line);border-radius:7px;padding:4px 8px;min-width:64px}
+.lw .d b{display:block;font-size:18px;font-family:var(--f-display)}
+
+/* share */
+.share-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,300px),1fr));gap:18px;align-items:start}
+.share-btns{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px}
+.sbtn{display:flex;align-items:center;gap:10px;padding:12px;border-radius:10px;border:1px solid var(--line);text-decoration:none;color:var(--ink);font-weight:600;background:var(--surface);cursor:pointer;font-size:14px}
+.sbtn .mk{width:30px;height:30px;border-radius:8px;display:grid;place-items:center;color:#fff;font-family:var(--f-mono);font-size:12px;font-weight:600;flex:none}
+.sbtn:hover{border-color:var(--muted)}
+textarea.share{width:100%;min-height:260px;border:1px solid var(--line);border-radius:10px;background:var(--surface-2);padding:12px;font-family:var(--f-mono);font-size:12.5px;line-height:1.55;resize:vertical}
+.story{max-width:270px;border-radius:14px;border:1px solid var(--line);display:block}
+.ai-out{white-space:pre-wrap;font-size:14px;background:var(--surface-2);border:1px solid var(--line);border-radius:8px;padding:12px;margin-top:10px;max-height:420px;overflow:auto}
+.ai-in{display:flex;gap:8px;flex-wrap:wrap}
+.ai-in input{flex:1 1 220px;border:1px solid var(--line);border-radius:8px;padding:8px 10px;background:var(--surface);min-width:0}
+.links{display:flex;flex-wrap:wrap;gap:8px}
+.toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--ink);color:var(--surface);padding:10px 16px;border-radius:8px;font-weight:600;font-size:14px;z-index:20}
+.disclaimer{border-left:3px solid var(--accent);padding:8px 12px;background:var(--accent-soft);border-radius:0 8px 8px 0;font-size:13px;color:var(--ink)}
+
+/* loop logo */
+.logo i{border-radius:50%;border:3px solid var(--accent);border-right-color:transparent;transform:rotate(-30deg)}
+.logo i::after{content:"";position:absolute;right:-5px;top:1px;left:auto;bottom:auto;width:0;height:0;background:none;border-left:6px solid transparent;border-right:6px solid transparent;border-top:8px solid var(--accent);transform:rotate(30deg)}
+.route{margin-top:16px;gap:8px;align-items:center}
+.route .flap span{font-size:clamp(22px,4.6vw,40px);padding:6px 5px}
+.route .sep{color:var(--accent);font-size:22px;font-weight:700}
+.route .loopback{font-family:var(--f-mono);font-size:12px;color:var(--board-muted);border:1px dashed #3A4F68;border-radius:6px;padding:4px 8px}
+.board .cities{font-size:13.5px;color:var(--board-muted);margin-top:8px}
+.board .cities b{color:var(--board-fg);font-weight:600}
+.flabel{font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--board-muted);font-weight:600}
+.stops{border-top:1px solid #23344A;padding-block:12px 14px}
+.stops-head{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:8px}
+.stop-row{display:flex;gap:8px;flex-wrap:wrap;align-items:stretch}
+.stopc{display:flex;align-items:center;gap:8px;background:var(--board-2);border:1px solid #2B3E54;border-radius:10px;padding:6px 8px 6px 10px;color:var(--board-fg);min-width:0}
+.stopc .no{font-family:var(--f-mono);font-size:11px;color:var(--board);background:var(--accent);border-radius:50%;width:20px;height:20px;display:grid;place-items:center;font-weight:600;flex:none}
+.stopc .nm{font-weight:600;font-size:14px;line-height:1.2}
+.stopc .nm small{display:block;font-weight:400;color:var(--board-muted);font-size:11.5px}
+.stepper{display:inline-flex;align-items:center;border:1px solid #3A4F68;border-radius:7px;overflow:hidden}
+.stepper button,.stopc .ib{background:transparent;border:0;color:var(--board-fg);cursor:pointer;padding:3px 8px;font-size:14px;line-height:1}
+.stepper button:hover,.stopc .ib:hover{background:#2B3E54}
+.stepper b{font-family:var(--f-mono);font-size:12.5px;padding:0 4px;min-width:30px;text-align:center}
+.stopc .ib{color:var(--board-muted);border-radius:6px;padding:4px 6px}
+.addstop{background:transparent;border:1px dashed #4A6078;border-radius:10px;color:var(--board-fg);padding:8px 10px;min-width:0;max-width:100%;color-scheme:dark}
+.addstop option,.addstop optgroup{background:var(--board-2);color:var(--board-fg)}
+/* timeline */
+.tl{display:grid;gap:0;position:relative}
+.tl-node{display:grid;grid-template-columns:34px 1fr;gap:12px;align-items:start}
+.tl-rail{display:flex;flex-direction:column;align-items:center;align-self:stretch}
+.tl-rail .b{width:34px;height:34px;border-radius:50%;display:grid;place-items:center;font-family:var(--f-mono);font-size:10px;font-weight:600;flex:none;border:2px solid var(--line);background:var(--surface);color:var(--muted)}
+.tl-rail .b.city{background:var(--ink);border-color:var(--ink);color:var(--surface);font-size:11px}
+.tl-rail .b.fl{border-color:var(--accent);color:var(--accent-ink)}
+.tl-rail .b.gr{border-color:var(--teal);color:var(--teal)}
+.tl-rail .ln{flex:1;width:2px;background:var(--line);min-height:14px}
+.tl-body{padding-bottom:16px;min-width:0}
+.seg{display:grid;grid-template-columns:1fr auto;gap:8px 14px;align-items:start;border:1px solid var(--line);border-radius:10px;padding:10px 12px;background:var(--surface)}
+.seg .md{font-weight:700}
+.seg .meta{font-size:13px;color:var(--muted)}
+.seg .pr{text-align:right;font-family:var(--f-mono);font-weight:600;white-space:nowrap}
+.seg .pr small{display:block;font-family:var(--f-body);font-weight:400;color:var(--muted);font-size:12px}
+.seg .lk{grid-column:1/-1;display:flex;gap:6px;flex-wrap:wrap}
+.citycard{border:1px solid var(--ink);border-radius:10px;padding:12px 14px;background:var(--surface-2)}
+.citycard h3{font-family:var(--f-display);font-size:24px;text-transform:uppercase;font-weight:800;margin:0}
+.leg-title{font-family:var(--f-display);font-size:20px;text-transform:uppercase;font-weight:800;margin:6px 0 2px}
+details.more summary{cursor:pointer;font-weight:600;color:var(--teal);font-size:13.5px;padding:6px 0}
+.fcard{border:1px solid var(--line);border-radius:12px;background:var(--surface);overflow:hidden}
+.fcard .fh{display:grid;grid-template-columns:1fr auto;gap:10px;padding:14px 16px;align-items:center}
+.fcard .codes{display:flex;align-items:center;gap:10px;font-family:var(--f-mono);font-size:22px;font-weight:600}
+.fcard .codes .ln{flex:1;height:1px;background:var(--line);min-width:30px;max-width:120px;position:relative}
+.fcard .fb{border-top:1px solid var(--line);padding:4px 16px 12px}
+.tag{font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;font-weight:700;padding:2px 7px;border-radius:5px;background:var(--surface-2);border:1px solid var(--line);color:var(--muted)}
+.tag.intl{color:var(--accent-ink);border-color:var(--accent)}
+.stop-sec{display:grid;gap:12px}
+.stop-sec>*{min-width:0}
+.tl-node>*{min-width:0}
+.stop-sec>header{display:flex;justify-content:space-between;gap:10px;align-items:flex-end;flex-wrap:wrap}
+.stop-sec h3{font-family:var(--f-display);font-size:24px;text-transform:uppercase;font-weight:800;margin:0}
+
+@media (max-width:560px){
+  .seg{grid-template-columns:1fr}
+  .seg .pr{text-align:left}
+
+  .verdict{grid-template-columns:1fr}
+  .pass{grid-template-columns:1fr}
+  .pass .stub{border-left:0;border-top:2px dashed var(--line);text-align:left}
+  .cal .c{min-height:46px}
+  .cal .c .hn{display:none}
+  .dcard li{grid-template-columns:62px 1fr auto}
+}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+</style>
+</head>
+<body>
+
+
+<header class="board">
+  <div class="wrap">
+    <div class="brand">
+      <div class="logo"><i aria-hidden="true"></i>Loop Commute</div>
+      <div class="asof" id="asof"></div>
+    </div>
+    <div class="route" id="routeFlaps" aria-live="polite"></div>
+    <div class="cities" id="routeCities"></div>
+    <form class="search" id="search" autocomplete="off">
+      <div class="field"><label for="from">Flying from</label><select id="from"></select></div>
+      <div class="field"><label for="cc">Destination country</label><select id="cc"></select></div>
+      <div class="field"><label for="trip">Trip type</label><select id="trip"><option value="round">Round trip (open-jaw)</option><option value="oneway">One way</option></select></div>
+      <div class="field"><label for="dep">Depart</label><input type="date" id="dep"></div>
+      <div class="field"><label for="adults">Travellers</label><select id="adults"></select></div>
+      <div class="field"><label for="rooms">Rooms</label><select id="rooms"></select></div>
+      <div class="field"><label for="cur">Prices in</label><select id="cur"></select></div>
+    </form>
+    <section class="stops" aria-label="Cities on this trip">
+      <div class="stops-head"><span class="flabel">Cities on this trip, in order</span><span class="flabel" id="stopsSum"></span></div>
+      <div class="stop-row" id="stopRow"></div>
+    </section>
+    <nav class="tabs" id="tabs" aria-label="Sections">
+      <a href="#decide">Decide</a><a href="#route">Route &amp; transfers</a><a href="#flights">Flights</a><a href="#hotels">Hotels</a><a href="#food">Food</a><a href="#trends">Fare trends</a><a href="#plan">Itinerary</a><a href="#visa">Visa &amp; fees</a><a href="#holidays">Holidays</a><a href="#share">Share</a>
+    </nav>
+  </div>
+</header>
+
+<main><div class="wrap"><div id="view" class="view"></div></div></main>
+<div class="toast" id="toast" hidden></div>
+
+<script>
+"use strict";
+/* ---------------- Data ---------------- */
+// id, city, country, lat, lon, airport ("IATA" or "via:CITYID:hours"), major intl airport (1/0), mid hotel USD/night, sights+local transport USD/person/day, peak months, shoulder months, areas, sights, where to eat
+const CITY_RAW = [
+// India
+["DEL","Delhi","IN",28.56,77.10,"DEL",1,70,20,"10,11,12,1,2,3","9,4","Aerocity|Connaught Place|South Delhi","Red Fort & Chandni Chowk|Qutub Minar|Humayun's Tomb|India Gate|Lodhi Garden|Akshardham Temple","Paranthe Wali Gali and Karim's in Old Delhi"],
+["BOM","Mumbai","IN",19.09,72.87,"BOM",1,95,22,"11,12,1,2","10,3","Colaba|Bandra|Juhu","Gateway of India|Marine Drive at sunset|Elephanta Caves|CSMT heritage station|Bandra Bandstand|Kala Ghoda","Vada pav and pav bhaji at Juhu Chowpatty"],
+["BLR","Bengaluru","IN",13.20,77.71,"BLR",1,75,18,"10,11,12,1,2","9,3","MG Road|Indiranagar|Whitefield","Lalbagh Botanical Garden|Bangalore Palace|Cubbon Park|Church Street|Nandi Hills sunrise","Masala dosa at CTR and MTR"],
+["MAA","Chennai","IN",12.99,80.17,"MAA",1,65,16,"11,12,1,2","10,3","Nungambakkam|T Nagar|ECR","Marina Beach|Kapaleeshwarar Temple|Fort St. George|Mahabalipuram shore temples|DakshinaChitra","Filter coffee and meals at Saravana Bhavan"],
+["CCU","Kolkata","IN",22.65,88.45,"CCU",1,60,15,"10,11,12,1,2","9,3","Park Street|Salt Lake|Ballygunge","Victoria Memorial|Howrah Bridge|Kumartuli potters|Indian Museum|Dakshineswar Temple","Kathi rolls on Park Street, sweets at Balaram Mullick"],
+["HYD","Hyderabad","IN",17.24,78.43,"HYD",1,65,16,"10,11,12,1,2","9,3","Banjara Hills|HITEC City|Jubilee Hills","Charminar & Laad Bazaar|Golconda Fort|Chowmahalla Palace|Salar Jung Museum|Ramoji Film City","Biryani at Paradise or Shah Ghouse"],
+["GOI","Goa","IN",15.38,73.83,"GOI",1,90,20,"11,12,1,2","10,3","Candolim|Anjuna|Palolem","Fort Aguada|Baga & Calangute beaches|Old Goa churches|Anjuna flea market|Fontainhas|Dudhsagar Falls","Goan fish thali at beach shacks"],
+["COK","Kochi","IN",10.15,76.40,"COK",1,60,16,"11,12,1,2","10,3","Fort Kochi|Marine Drive","Chinese fishing nets|Mattancherry Palace|Jew Town|Kathakali show|Fort Kochi heritage walk","Kerala sadya and appam with stew"],
+["MNR","Munnar","IN",10.09,77.06,"via:COK:4",0,70,15,"9,10,11,12,1,2","3,4","Town|Chithirapuram","Tea gardens & Tea Museum|Eravikulam National Park|Mattupetty Dam|Top Station viewpoint|Attukal waterfalls","Fresh tea and Kerala meals at estate cafés"],
+["ALP","Alleppey","IN",9.49,76.33,"via:COK:1.5",0,80,15,"11,12,1,2","10,3","Punnamada|Marari","Backwater houseboat overnight|Kayaking village canals|Marari beach|Ambalapuzha temple","Karimeen fry and toddy-shop curries"],
+["JAI","Jaipur","IN",26.82,75.81,"JAI",0,60,15,"10,11,12,1,2","9,3","C-Scheme|MI Road|Amer","Amber Fort|Hawa Mahal|City Palace|Jantar Mantar|Nahargarh sunset|Johari Bazaar","Dal baati churma at Chokhi Dhani, lassi at Lassiwala"],
+["UDR","Udaipur","IN",24.62,73.90,"UDR",0,85,16,"10,11,12,1,2","9,3","Lake Pichola|Fatehsagar","City Palace|Lake Pichola boat ride|Jag Mandir|Saheliyon ki Bari|Monsoon Palace sunset","Rooftop dinners facing Lake Pichola"],
+["AGR","Agra","IN",27.16,78.01,"via:DEL:3.5",0,60,18,"10,11,12,1,2","9,3","Taj Ganj|Fatehabad Road","Taj Mahal at sunrise|Agra Fort|Mehtab Bagh|Fatehpur Sikri|Itmad-ud-Daulah","Petha sweets and Mughlai at Pinch of Spice"],
+["AMD","Ahmedabad","IN",23.07,72.63,"AMD",1,55,14,"11,12,1,2","10,3","Ashram Road|SG Highway","Sabarmati Ashram|Adalaj Stepwell|Old city heritage walk|Riverfront|Statue of Unity day trip","Manek Chowk night food market"],
+["SXR","Srinagar","IN",33.99,74.77,"SXR",0,65,18,"4,5,6,9,10","3,7,8","Dal Lake|Rajbagh","Dal Lake shikara|Mughal Gardens|Gulmarg gondola|Pahalgam|Sonmarg","Wazwan feast and kahwa tea"],
+["IXL","Leh","IN",34.14,77.55,"IXL",0,70,22,"6,7,8,9","5,10","Leh town|Changspa","Leh Palace|Shanti Stupa|Pangong Lake|Nubra Valley|Khardung La","Thukpa and momos in Leh market"],
+["VNS","Varanasi","IN",25.45,82.86,"VNS",0,55,12,"10,11,12,1,2,3","9","Assi Ghat|Dashashwamedh","Ganga aarti at Dashashwamedh|Sunrise boat on the Ganges|Kashi Vishwanath|Sarnath|Old city lanes","Kachori-sabzi breakfast and Banarasi paan"],
+["ATQ","Amritsar","IN",31.71,74.80,"ATQ",0,55,12,"10,11,12,1,2,3","9","Golden Temple area|Ranjit Avenue","Golden Temple|Wagah border ceremony|Jallianwala Bagh|Partition Museum","Langar at the Golden Temple, Amritsari kulcha"],
+["IXZ","Andaman","IN",11.64,92.73,"IXZ",0,90,22,"11,12,1,2,3,4","10,5","Port Blair|Havelock|Neil","Cellular Jail light show|Radhanagar beach|Scuba at Havelock|Neil Island|Ross Island","Fresh seafood grills in Havelock"],
+// Thailand
+["BKK","Bangkok","TH",13.69,100.75,"BKK",1,85,30,"11,12,1,2","10,3","Sukhumvit|Riverside|Silom","Grand Palace & Wat Phra Kaew|Wat Arun|Chatuchak weekend market|Chao Phraya river cruise|Damnoen Saduak floating market|Rooftop bar evening","Yaowarat (Chinatown) street food; Indian food at Pahurat"],
+["PYX","Pattaya","TH",12.93,100.88,"via:BKK:2",0,70,30,"11,12,1,2","10,3","Central Pattaya|Jomtien|Naklua","Coral Island (Koh Larn)|Sanctuary of Truth|Nong Nooch Garden|Walking Street|Pattaya Viewpoint|Alcazar show","Indian restaurants along Beach Road; seafood at Naklua"],
+["HKT","Phuket","TH",8.11,98.31,"HKT",1,95,35,"11,12,1,2,3","10,4","Patong|Kata|Kamala","Phi Phi islands boat trip|Old Phuket Town|Big Buddha|Promthep Cape sunset|Phang Nga Bay (James Bond Island)|Kata beach","Old Town's Sunday Walking Street market"],
+["KBV","Krabi","TH",8.10,98.98,"KBV",0,75,30,"11,12,1,2,3","10,4","Ao Nang|Railay|Klong Muang","Four Islands longtail tour|Railay beach|Tiger Cave Temple|Hong Islands|Emerald Pool & hot springs","Ao Nang night market"],
+["CNX","Chiang Mai","TH",18.77,98.96,"CNX",0,60,25,"11,12,1,2","10,3","Old City|Nimman|Riverside","Doi Suthep temple|Elephant Nature Park|Old City temples|Sunday Walking Street|Thai cooking class","Khao soi at Khao Soi Khun Yai"],
+["USM","Koh Samui","TH",9.55,100.06,"USM",0,110,35,"1,2,3,4,7,8","5,6,12","Chaweng|Bophut|Lamai","Ang Thong Marine Park|Big Buddha|Fisherman's Village|Na Muang waterfall|Chaweng beach","Fisherman's Village Friday market"],
+// Vietnam
+["HAN","Hanoi","VN",21.22,105.81,"HAN",1,60,25,"10,11,12,3,4","2,5","Old Quarter|Hoan Kiem|West Lake","Hoan Kiem Lake|Old Quarter food walk|Temple of Literature|Train Street|Water puppet show","Bun cha and egg coffee in the Old Quarter"],
+["HLB","Ha Long Bay","VN",20.95,107.08,"via:HAN:2.5",0,110,40,"10,11,12,3,4","2,5","Bai Chay|Tuan Chau","Overnight bay cruise|Sung Sot cave|Kayaking Lan Ha Bay|Ti Top island"," Seafood on board your cruise"],
+["DAD","Da Nang","VN",16.04,108.20,"DAD",1,65,25,"2,3,4,5,6,7,8","1,9","My Khe beach|Son Tra","Ba Na Hills & Golden Bridge|Marble Mountains|Dragon Bridge fire show|My Khe beach|Son Tra peninsula","Mi Quang noodles at the Han market"],
+["HOI","Hoi An","VN",15.88,108.33,"via:DAD:0.75",0,60,25,"2,3,4,5,6,7","1,8","Ancient Town|An Bang","Ancient Town by lantern light|Tailor shops|My Son ruins|Basket boat ride|An Bang beach","Cao lau and banh mi at Banh Mi Phuong"],
+["SGN","Ho Chi Minh City","VN",10.82,106.66,"SGN",1,65,25,"12,1,2,3","11,4","District 1|District 3","War Remnants Museum|Cu Chi Tunnels|Ben Thanh Market|Mekong Delta day trip|Bui Vien street","Pho and broken rice (com tam) in District 1"],
+["PQC","Phu Quoc","VN",10.17,103.99,"PQC",0,85,30,"11,12,1,2,3","4,10","Long Beach|Duong Dong|Sunset Town","Hon Thom cable car|Sao beach|Grand World|Sunset Town|Snorkelling An Thoi islands","Duong Dong night market seafood"],
+// Indonesia
+["DPS","Bali (Kuta/Seminyak)","ID",-8.75,115.17,"DPS",1,80,30,"6,7,8,12","4,5,9","Seminyak|Kuta|Uluwatu","Uluwatu temple & Kecak dance|Tanah Lot sunset|Nusa Penida day trip|Seminyak beach clubs|Waterbom","Warungs in Seminyak; Indian food in Kuta"],
+["UBD","Ubud","ID",-8.51,115.26,"via:DPS:1.5",0,70,25,"6,7,8,12","4,5,9","Central Ubud|Tegallalang","Tegallalang rice terraces|Sacred Monkey Forest|Mount Batur sunrise trek|Tirta Empul temple|Ubud Palace & market","Vegan cafés and babi guling at Ibu Oka"],
+["GIL","Gili Islands","ID",-8.35,116.04,"via:DPS:3",0,70,25,"6,7,8,9","4,5,10","Gili Trawangan|Gili Air","Snorkel with turtles|Sunset swings|Cycling around the island|Freediving class","Night market on Gili Trawangan"],
+["CGK","Jakarta","ID",-6.13,106.66,"CGK",1,75,25,"6,7,8,9","5,10","Menteng|SCBD|Kota","National Monument|Kota Tua|Istiqlal Mosque|Thousand Islands day trip","Sate and nasi goreng at street stalls"],
+["JOG","Yogyakarta","ID",-7.90,110.06,"JOG",0,55,25,"6,7,8,9","5,10","Malioboro|Prawirotaman","Borobudur sunrise|Prambanan temples|Kraton palace|Malioboro street|Merapi jeep tour","Gudeg at Wijilan"],
+// Malaysia
+["KUL","Kuala Lumpur","MY",2.74,101.70,"KUL",1,85,25,"12,1,6,7","2,8","KLCC|Bukit Bintang|Chinatown","Petronas Twin Towers|Batu Caves|Merdeka Square|KL Tower|Central Market","Jalan Alor food street; banana-leaf in Brickfields"],
+["GNT","Genting Highlands","MY",3.42,101.79,"via:KUL:1.5",0,80,40,"12,1,6,7","2,8","Resorts World","Awana SkyWay cable car|Genting SkyWorlds theme park|Chin Swee temple|Premium outlets","Food courts at Resorts World"],
+["LGK","Langkawi","MY",6.33,99.73,"LGK",0,90,30,"12,1,2,3","11,4","Pantai Cenang|Kuah","SkyCab & SkyBridge|Mangrove kayak tour|Island hopping|Pantai Cenang beach|Duty-free shopping","Seafood at Pantai Cenang"],
+["PEN","Penang","MY",5.30,100.28,"PEN",0,70,22,"12,1,2","3,11","George Town|Batu Ferringhi","George Town street art|Penang Hill|Kek Lok Si temple|Clan jetties|Batu Ferringhi beach","Gurney Drive hawker centre; Little India"],
+// Singapore, UAE, Qatar, HK
+["SIN","Singapore","SG",1.36,103.99,"SIN",1,210,55,"12,1,6,7","2,8","Marina Bay|Orchard|Little India","Gardens by the Bay|Marina Bay Sands SkyPark|Sentosa & Universal Studios|Night Safari|Jewel Changi","Hawker food at Lau Pa Sat; Little India for Indian"],
+["DXB","Dubai","AE",25.25,55.36,"DXB",1,150,55,"11,12,1,2,3","10,4","Downtown|Dubai Marina|Deira","Burj Khalifa At the Top|Dubai Mall fountain|Desert safari|Old Dubai & abra ride|Museum of the Future|Global Village","Karama and Bur Dubai for Indian; Al Ustad kebabs"],
+["AUH","Abu Dhabi","AE",24.43,54.65,"AUH",1,130,50,"11,12,1,2,3","10,4","Corniche|Yas Island|Saadiyat","Sheikh Zayed Grand Mosque|Louvre Abu Dhabi|Ferrari World|BAPS Hindu Mandir|Qasr Al Watan","Emirati food at Al Fanar"],
+["RKT","Ras Al Khaimah","AE",25.61,55.94,"RKT",0,120,40,"11,12,1,2,3","10,4","Al Marjan Island|Al Hamra","Jebel Jais zipline|Jebel Jais viewing deck|Dhayah Fort|Al Marjan beach","Beachside grills on Al Marjan Island"],
+["DOH","Doha","QA",25.27,51.61,"DOH",1,140,45,"11,12,1,2,3","10,4","West Bay|Msheireb|The Pearl","Museum of Islamic Art|Souq Waqif|Katara Cultural Village|National Museum|Inland Sea desert trip","Souq Waqif restaurants"],
+["HKG","Hong Kong","HK",22.31,113.91,"HKG",1,190,50,"10,11,12,3","1,2,4","Tsim Sha Tsui|Central|Causeway Bay","Victoria Peak tram|Star Ferry|Temple Street night market|Big Buddha|Disneyland","Dim sum at Tim Ho Wan; Indian at Chungking Mansions"],
+// Japan, Korea, Philippines
+["NRT","Tokyo","JP",35.77,140.39,"NRT",1,180,50,"3,4,10,11","5,9,12","Shinjuku|Shibuya|Asakusa","Senso-ji Temple|Shibuya Crossing|Meiji Shrine|teamLab Planets|Akihabara|Tsukiji outer market","Ramen in Shinjuku; Indian in Nishi-Kasai"],
+["HKN","Hakone / Mt Fuji","JP",35.23,139.11,"via:NRT:2.5",0,200,45,"3,4,10,11","5,9,12","Hakone-Yumoto|Kawaguchiko","Lake Ashi cruise|Hakone ropeway & Owakudani|Open-Air Museum|Onsen ryokan night|Fuji views at Kawaguchiko","Kaiseki dinner at your ryokan"],
+["KYO","Kyoto","JP",35.01,135.77,"via:KIX:1.2",0,170,45,"3,4,10,11","5,9,12","Gion|Kyoto Station|Arashiyama","Fushimi Inari gates|Kinkaku-ji|Arashiyama bamboo grove|Gion at dusk|Kiyomizu-dera|Nara deer day trip","Nishiki Market"],
+["KIX","Osaka","JP",34.43,135.24,"KIX",1,150,45,"3,4,10,11","5,9,12","Namba|Umeda","Osaka Castle|Dotonbori|Universal Studios Japan|Kuromon market|Umeda Sky Building","Takoyaki and okonomiyaki in Dotonbori"],
+["HIJ","Hiroshima","JP",34.44,132.92,"HIJ",0,120,40,"3,4,10,11","5,9","Naka-ku|Miyajima","Peace Memorial Park & Museum|Miyajima floating torii|Hiroshima Castle|Shukkeien garden","Hiroshima-style okonomiyaki"],
+["ICN","Seoul","KR",37.46,126.44,"ICN",1,140,45,"4,5,9,10","3,6,11","Myeongdong|Hongdae|Gangnam","Gyeongbokgung Palace|Bukchon Hanok Village|N Seoul Tower|DMZ tour|Gwangjang Market","Gwangjang Market; Indian in Itaewon"],
+["PUS","Busan","KR",35.18,128.94,"PUS",0,110,40,"4,5,9,10","6,11","Haeundae|Seomyeon","Haeundae beach|Gamcheon Culture Village|Jagalchi fish market|Haedong Yonggungsa temple","Jagalchi fish market"],
+["CJU","Jeju","KR",33.51,126.49,"CJU",0,110,40,"4,5,9,10","6,11","Jeju City|Seogwipo","Seongsan Ilchulbong sunrise|Hallasan hike|Manjanggul lava tube|Udo island","Black pork BBQ"],
+["MNL","Manila","PH",14.51,121.02,"MNL",1,90,25,"12,1,2,3,4","11,5","Makati|BGC|Intramuros","Intramuros & Fort Santiago|Rizal Park|Binondo food walk|Manila Bay sunset|Tagaytay day trip","Binondo (oldest Chinatown) food walk"],
+["CEB","Cebu","PH",10.31,123.98,"CEB",1,80,30,"12,1,2,3,4","11,5","Cebu City|Mactan","Oslob whale sharks|Kawasan Falls canyoneering|Magellan's Cross|Island hopping","Lechon at House of Lechon"],
+["MPH","Boracay","PH",11.92,121.95,"MPH",0,110,30,"12,1,2,3,4,5","11","Station 1|Station 2","White Beach|Paraw sailing at sunset|Puka beach|Island hopping|Mount Luho viewpoint","D'Mall restaurants"],
+// South Asia islands & Himalaya
+["CMB","Colombo","LK",7.18,79.88,"CMB",1,75,20,"12,1,2,3","11,4","Colombo 3|Colombo 7","Galle Face Green|Gangaramaya Temple|Pettah market|Viharamahadevi Park","Ministry of Crab; rice & curry at local cafés"],
+["KDY","Kandy","LK",7.29,80.63,"via:CMB:3.5",0,60,18,"12,1,2,3","4,8","Lake area|Peradeniya","Temple of the Tooth|Kandy Lake|Peradeniya Botanical Gardens|Cultural dance show|Tea factory visit","Kottu roti and hoppers"],
+["SGR","Sigiriya","LK",7.95,80.76,"via:CMB:4",0,70,25,"1,2,3,4","5,12","Sigiriya village|Habarana","Sigiriya Rock Fortress|Pidurangala sunrise|Dambulla cave temple|Minneriya elephant safari","Village rice & curry lunches"],
+["ELL","Ella","LK",6.87,81.05,"via:CMB:6",0,55,15,"1,2,3,4","5,12","Ella town","Nine Arch Bridge|Little Adam's Peak|Ella Rock hike|Ravana Falls|Tea estates","Cafés on Ella's main street"],
+["GAL","Galle","LK",6.03,80.22,"via:CMB:2.5",0,80,20,"12,1,2,3","11,4","Galle Fort|Unawatuna|Mirissa","Galle Fort walls|Unawatuna beach|Mirissa whale watching|Stilt fishermen at Koggala","Seafood in Galle Fort"],
+["MLE","Malé","MV",4.19,73.53,"MLE",1,140,30,"12,1,2,3,4","11","Malé|Hulhumalé|Maafushi","Malé fish market|Hukuru Miskiy|Maafushi local island|Sandbank picnic","Local cafés in Malé; guesthouses on Maafushi"],
+["RES","Maldives resort atoll","MV",4.10,73.40,"via:MLE:0.75",0,380,40,"12,1,2,3,4","11","North Malé Atoll|Ari Atoll|Baa Atoll","Snorkelling house reef|Sunset dolphin cruise|Manta ray dive|Overwater villa day|Spa","Resort restaurants (half/full board advised)"],
+["KTM","Kathmandu","NP",27.70,85.36,"KTM",1,55,15,"10,11,3,4","9,12,2","Thamel|Patan","Swayambhunath|Boudhanath Stupa|Pashupatinath|Patan Durbar Square|Bhaktapur|Everest mountain flight","Momos and dal bhat in Thamel"],
+["PKR","Pokhara","NP",28.20,83.98,"PKR",0,50,18,"10,11,3,4","9,12,2","Lakeside|Sarangkot","Phewa Lake boating|Sarangkot sunrise|Paragliding|World Peace Pagoda|Devi's Fall","Lakeside cafés"],
+["CHT","Chitwan","NP",27.58,84.49,"via:KTM:5",0,55,30,"10,11,12,1,2,3","4","Sauraha","Jeep safari for rhinos|Canoe on Rapti river|Tharu village|Elephant breeding centre","Tharu thali in Sauraha"],
+["PBH","Paro","BT",27.40,89.42,"PBH",1,120,30,"3,4,10,11","5,9","Paro town","Tiger's Nest monastery hike|Rinpung Dzong|National Museum|Kyichu Lhakhang","Ema datshi at local restaurants"],
+["THI","Thimphu","BT",27.47,89.64,"via:PBH:1.2",0,110,25,"3,4,10,11","5,9","Norzin Lam","Buddha Dordenma|Tashichho Dzong|Weekend market|Takin reserve","Momos at Norzin Lam"],
+["PUN","Punakha","BT",27.59,89.86,"via:PBH:3.5",0,110,25,"3,4,10,11","5,9","Lobesa","Punakha Dzong|Dochula Pass|Suspension bridge|Chimi Lhakhang","Farmhouse lunch with red rice"],
+// Middle East, Caucasus, Central Asia, Türkiye
+["IST","Istanbul","TR",41.26,28.74,"IST",1,120,40,"4,5,6,9,10","3,7,8,11","Sultanahmet|Beyoğlu|Karaköy","Hagia Sophia|Blue Mosque|Topkapı Palace|Grand Bazaar|Bosphorus cruise|Basilica Cistern","Kadıköy food market; Indian near Taksim"],
+["NAV","Cappadocia","TR",38.77,34.53,"NAV",0,110,60,"4,5,6,9,10","3,7,8,11","Göreme|Ürgüp|Uçhisar","Sunrise hot-air balloon|Göreme Open-Air Museum|Underground city|Red Valley hike","Pottery kebab (testi kebabı)"],
+["AYT","Antalya","TR",36.90,30.80,"AYT",1,100,35,"5,6,7,8,9","4,10","Kaleiçi|Lara|Konyaaltı","Kaleiçi old town|Düden waterfalls|Aspendos theatre|Konyaaltı beach|Boat trip","Kaleiçi meyhanes"],
+["TBS","Tbilisi","GE",41.67,44.95,"TBS",1,70,25,"5,6,9,10","4,7,8","Old Tbilisi|Vake|Sololaki","Narikala Fortress|Sulfur baths|Rustaveli Avenue|Mtskheta|Fabrika","Khinkali at Pasanauri; Indian on Aghmashenebeli"],
+["KAZ","Kazbegi","GE",42.66,44.64,"via:TBS:3",0,60,20,"6,7,8,9","5,10","Stepantsminda","Gergeti Trinity Church|Ananuri fortress|Gudauri viewpoint|Truso valley","Mountain guesthouse dinners"],
+["BUS","Batumi","GE",41.61,41.60,"BUS",0,70,25,"6,7,8,9","5,10","Old Batumi|New Boulevard","Batumi Boulevard|Ali & Nino statue|Botanical Garden|Cable car","Adjarian khachapuri"],
+["GYD","Baku","AZ",40.47,50.05,"GYD",1,90,30,"5,6,9,10","4,7,8","Old City|Boulevard","Icherisheher Old City|Flame Towers|Heydar Aliyev Center|Gobustan mud volcanoes|Ateshgah Fire Temple","Plov and qutab in the Old City"],
+["ALA","Almaty","KZ",43.35,77.04,"ALA",1,80,30,"6,7,8,9,12,1","5,10","Medeu|Downtown","Shymbulak ski resort|Big Almaty Lake|Kok Tobe|Charyn Canyon|Green Bazaar","Beshbarmak at Navat"],
+// Europe
+["LHR","London","GB",51.47,-0.45,"LHR",1,230,55,"6,7,8,12","5,9","Westminster|Kensington|Shoreditch","Tower of London|British Museum|Westminster & Big Ben|London Eye|West End show|Camden Market","Borough Market; Brick Lane and Southall for Indian"],
+["EDI","Edinburgh","GB",55.95,-3.36,"EDI",1,170,45,"6,7,8,12","5,9","Old Town|New Town","Edinburgh Castle|Royal Mile|Arthur's Seat|Highlands day trip|Holyrood Palace","Grassmarket pubs"],
+["MAN","Manchester","GB",53.35,-2.27,"MAN",1,140,40,"6,7,8,12","5,9","City Centre|Northern Quarter","Old Trafford tour|Etihad stadium|Science and Industry Museum|Lake District day trip","Curry Mile in Rusholme"],
+["CDG","Paris","FR",49.00,2.55,"CDG",1,220,55,"5,6,7,9","4,10,12","Le Marais|Saint-Germain|Montmartre","Eiffel Tower|Louvre Museum|Seine river cruise|Montmartre & Sacré-Cœur|Versailles day trip|Disneyland Paris","Crêpes in Montparnasse; Indian in La Chapelle"],
+["NCE","Nice","FR",43.66,7.21,"NCE",1,170,45,"5,6,7,8,9","4,10","Vieux Nice|Promenade des Anglais","Promenade des Anglais|Old Town & Castle Hill|Monaco & Monte Carlo|Èze village|Cannes day trip","Socca at Cours Saleya market"],
+["LYS","Lyon","FR",45.73,5.08,"LYS",1,140,40,"5,6,7,9","4,10,12","Presqu'île|Vieux Lyon","Vieux Lyon traboules|Fourvière Basilica|Les Halles Paul Bocuse|Parc de la Tête d'Or","Bouchons in Vieux Lyon"],
+["FCO","Rome","IT",41.80,12.25,"FCO",1,180,50,"4,5,6,9,10","3,7,8,11","Centro Storico|Trastevere|Monti","Colosseum & Forum|Vatican Museums|Trevi Fountain|Pantheon|Borghese Gallery|Spanish Steps","Carbonara in Trastevere; gelato at Giolitti"],
+["FLR","Florence","IT",43.81,11.20,"FLR",0,170,45,"4,5,6,9,10","3,7,8,11","Duomo|Oltrarno","Duomo & Brunelleschi's dome|Uffizi Gallery|Ponte Vecchio|Accademia (David)|Tuscany & Pisa day trip","Mercato Centrale; bistecca alla fiorentina"],
+["VCE","Venice","IT",45.51,12.35,"VCE",1,210,50,"4,5,6,9,10","3,7,8,11","San Marco|Cannaregio|Mestre","St Mark's Square & Basilica|Gondola ride|Doge's Palace|Rialto Bridge|Murano & Burano","Cicchetti bars in Cannaregio"],
+["MXP","Milan","IT",45.63,8.72,"MXP",1,170,45,"4,5,6,9,10","3,7,8,11","Duomo|Navigli|Brera","Duomo rooftop|The Last Supper|Galleria Vittorio Emanuele|Lake Como day trip|Navigli canals","Aperitivo in Navigli"],
+["NAP","Naples / Amalfi","IT",40.88,14.29,"NAP",1,160,50,"5,6,7,8,9","4,10","Sorrento|Positano|Naples centro","Pompeii|Amalfi Coast drive|Positano|Capri boat trip|Naples historic centre","Pizza at L'Antica Pizzeria da Michele"],
+["BCN","Barcelona","ES",41.30,2.08,"BCN",1,170,45,"5,6,7,8,9","4,10","Eixample|Gothic Quarter|Barceloneta","Sagrada Família|Park Güell|Gothic Quarter|Casa Batlló|Barceloneta beach|Montjuïc","La Boqueria market tapas"],
+["MAD","Madrid","ES",40.49,-3.57,"MAD",1,150,40,"4,5,6,9,10","3,11","Sol|Salamanca|Malasaña","Prado Museum|Royal Palace|Retiro Park|Toledo day trip|Santiago Bernabéu","Mercado de San Miguel; churros at San Ginés"],
+["SVQ","Seville","ES",37.42,-5.90,"SVQ",0,130,40,"3,4,5,10","2,6,11","Santa Cruz|Triana","Real Alcázar|Seville Cathedral & Giralda|Plaza de España|Flamenco show|Córdoba day trip","Tapas in Triana"],
+["ZRH","Zurich","CH",47.46,8.55,"ZRH",1,240,60,"6,7,8,12,1","2,9","Altstadt|Bahnhofstrasse","Lake Zurich cruise|Old Town|Rhine Falls|Uetliberg|Lindt Home of Chocolate","Fondue at Swiss Chuchi"],
+["LUZ","Lucerne","CH",47.05,8.31,"via:ZRH:1",0,220,70,"6,7,8,12,1","2,9","Old Town|Lakeside","Chapel Bridge|Mt Titlis|Mt Pilatus|Lake Lucerne cruise|Lion Monument","Lakeside restaurants; Indian near the station"],
+["INT","Interlaken","CH",46.69,7.86,"via:ZRH:2",0,210,90,"6,7,8,12,1","2,9","Höhematte|Grindelwald|Lauterbrunnen","Jungfraujoch|Grindelwald First|Lauterbrunnen valley|Harder Kulm|Lake Brienz","Several Indian restaurants in town"],
+["GVA","Geneva","CH",46.24,6.11,"GVA",1,230,55,"6,7,8,12","5,9","Pâquis|Old Town","Jet d'Eau|UN Palais des Nations|Old Town|Lake Geneva cruise|Chamonix day trip","Fondue at Café du Soleil"],
+["ZMT","Zermatt","CH",46.02,7.75,"via:GVA:3.5",0,260,90,"7,8,12,1,2","3,9","Village","Matterhorn Glacier Paradise|Gornergrat railway|Five Lakes walk|Ski slopes","Raclette in the village"],
+["AMS","Amsterdam","NL",52.31,4.76,"AMS",1,200,50,"4,5,6,7,8","9,12","Canal Ring|Jordaan|De Pijp","Rijksmuseum|Van Gogh Museum|Anne Frank House|Canal cruise|Keukenhof (spring)|Zaanse Schans","Albert Cuyp market; Dutch pancakes"],
+["FRA","Frankfurt","DE",50.03,8.57,"FRA",1,160,40,"5,6,7,9,12","4,10","Altstadt|Sachsenhausen","Römerberg|Main Tower|Rhine Valley cruise|Heidelberg day trip|Christmas market (Dec)","Apple-wine taverns in Sachsenhausen"],
+["MUC","Munich","DE",48.35,11.79,"MUC",1,170,45,"6,7,9,12","5,10","Altstadt|Schwabing","Marienplatz|Neuschwanstein Castle|English Garden|BMW Welt|Oktoberfest (Sep)","Viktualienmarkt; Hofbräuhaus"],
+["BER","Berlin","DE",52.36,13.50,"BER",1,140,40,"5,6,7,9,12","4,10","Mitte|Kreuzberg","Brandenburg Gate|Berlin Wall & East Side Gallery|Museum Island|Reichstag dome|Checkpoint Charlie","Currywurst and döner in Kreuzberg"],
+["ATH","Athens","GR",37.94,23.94,"ATH",1,140,40,"5,6,7,8,9","4,10","Plaka|Monastiraki|Koukaki","Acropolis & Parthenon|Acropolis Museum|Plaka|Temple of Poseidon at Sounion|Monastiraki","Souvlaki in Monastiraki"],
+["JTR","Santorini","GR",36.40,25.48,"JTR",0,260,50,"6,7,8,9","5,10","Fira|Oia|Imerovigli","Oia sunset|Caldera boat cruise|Red Beach|Akrotiri ruins|Wine tasting","Ammoudi Bay seafood tavernas"],
+["JMK","Mykonos","GR",37.44,25.35,"JMK",0,250,55,"6,7,8,9","5,10","Mykonos Town|Platis Gialos","Little Venice|Windmills|Delos island|Paradise beach","Little Venice sunset bars"],
+["PRG","Prague","CZ",50.10,14.26,"PRG",1,120,30,"5,6,7,9,12","4,10","Old Town|Malá Strana","Charles Bridge|Prague Castle|Old Town Square & clock|Jewish Quarter|Český Krumlov day trip","Trdelník and Czech pubs"],
+["VIE","Vienna","AT",48.11,16.57,"VIE",1,150,40,"5,6,7,9,12","4,10","Innere Stadt|Neubau","Schönbrunn Palace|St. Stephen's Cathedral|Belvedere (Klimt)|Hofburg|Opera evening","Naschmarkt; Sachertorte at Café Sacher"],
+["SZG","Salzburg","AT",47.79,13.00,"SZG",0,140,40,"5,6,7,8,12","4,9","Altstadt","Hohensalzburg Fortress|Mozart's birthplace|Sound of Music tour|Hallstatt day trip","Augustiner Bräustübl beer hall"],
+["LIS","Lisbon","PT",38.77,-9.13,"LIS",1,140,35,"5,6,7,8,9","4,10","Baixa|Alfama|Príncipe Real","Belém Tower|Tram 28|Alfama & fado night|Sintra day trip|LX Factory","Pastéis de Belém; Time Out Market"],
+["OPO","Porto","PT",41.24,-8.68,"OPO",1,110,30,"5,6,7,8,9","4,10","Ribeira|Baixa","Ribeira riverfront|Port wine cellars|Livraria Lello|Douro Valley day trip","Francesinha at Café Santiago"],
+// Americas
+["JFK","New York","US",40.64,-73.78,"JFK",1,280,60,"6,7,9,10,12","5,11","Midtown|Lower Manhattan|Brooklyn","Statue of Liberty|Central Park|Times Square|Metropolitan Museum|Brooklyn Bridge|Broadway show","Pizza slices; Jackson Heights for Indian"],
+["IAD","Washington DC","US",38.95,-77.46,"IAD",1,220,40,"4,5,9,10","3,6,11","Downtown|Georgetown","National Mall|Smithsonian museums|Lincoln Memorial|Capitol tour|Georgetown","Ben's Chili Bowl"],
+["LAS","Las Vegas","US",36.08,-115.15,"LAS",1,150,70,"3,4,5,9,10","2,11","The Strip|Downtown","The Strip by night|Bellagio fountains|Grand Canyon day trip|Fremont Street|A show","Buffets on the Strip"],
+["LAX","Los Angeles","US",33.94,-118.41,"LAX",1,230,60,"6,7,8,9","4,5,10","Hollywood|Santa Monica|Downtown","Universal Studios|Hollywood Walk of Fame|Santa Monica Pier|Griffith Observatory|Disneyland","Tacos; Artesia's Little India"],
+["SFO","San Francisco","US",37.62,-122.38,"SFO",1,250,55,"6,7,8,9,10","5,11","Union Square|Fisherman's Wharf","Golden Gate Bridge|Alcatraz|Cable cars|Muir Woods|Napa Valley day trip","Clam chowder at Fisherman's Wharf"],
+["MCO","Orlando","US",28.43,-81.31,"MCO",1,170,110,"3,4,6,7,12","2,5","International Drive|Lake Buena Vista","Walt Disney World|Universal Orlando|Kennedy Space Center|SeaWorld","I-Drive restaurants"],
+["YYZ","Toronto","CA",43.68,-79.63,"YYZ",1,190,45,"6,7,8,9","5,10,12","Downtown|Yorkville","CN Tower|Distillery District|Royal Ontario Museum|Toronto Islands|St. Lawrence Market","Gerrard India Bazaar; Brampton"],
+["NIA","Niagara Falls","CA",43.09,-79.08,"via:YYZ:1.5",0,150,50,"6,7,8,9","5,10","Clifton Hill|Fallsview","Horseshoe Falls|Niagara City Cruises|Journey Behind the Falls|Niagara-on-the-Lake wineries","Fallsview restaurants"],
+["YVR","Vancouver","CA",49.19,-123.18,"YVR",1,190,45,"6,7,8,9","5,10","Downtown|Gastown","Stanley Park|Capilano Suspension Bridge|Granville Island|Whistler day trip|Grouse Mountain","Granville Island market; Surrey for Indian"],
+["CUN","Cancún","MX",21.04,-86.87,"CUN",1,170,50,"12,1,2,3,4","11,7","Hotel Zone|Playa del Carmen|Tulum","Chichén Itzá|Tulum ruins|Cenote swim|Isla Mujeres|Xcaret park","Tacos in downtown Cancún"],
+// Oceania
+["SYD","Sydney","AU",-33.94,151.18,"SYD",1,190,50,"12,1,2,3","10,11,4","CBD|The Rocks|Bondi","Sydney Opera House|Harbour Bridge climb|Bondi to Coogee walk|Taronga Zoo|Blue Mountains","Harris Park for Indian; fish at Sydney Fish Market"],
+["MEL","Melbourne","AU",-37.67,144.84,"MEL",1,170,45,"12,1,2,3","10,11,4","CBD|Southbank|St Kilda","Laneways|Great Ocean Road|Queen Victoria Market|Phillip Island penguins|Royal Botanic Gardens","Laneway cafés; Dandenong for Indian"],
+["OOL","Gold Coast","AU",-28.16,153.50,"OOL",0,160,70,"12,1,6,7,9","10,11,4","Surfers Paradise|Broadbeach","Surfers Paradise beach|Warner Bros Movie World|Dreamworld|Sea World|SkyPoint","Broadbeach restaurants"],
+["CNS","Cairns","AU",-16.88,145.75,"CNS",0,140,90,"6,7,8,9,10","5,11","Esplanade|Palm Cove","Great Barrier Reef cruise|Kuranda Scenic Railway|Daintree rainforest|Skyrail","Night markets on the Esplanade"],
+["AKL","Auckland","NZ",-37.00,174.79,"AKL",1,170,45,"12,1,2,3","11,4","CBD|Ponsonby","Sky Tower|Waiheke Island|Hobbiton day trip|Waitomo glowworm caves|Piha beach","Ponsonby Road; Sandringham for Indian"],
+["ROT","Rotorua","NZ",-38.14,176.25,"via:AKL:3",0,130,60,"12,1,2,3","11,4","Lakefront","Te Puia geysers|Māori hāngī & cultural show|Redwoods treewalk|Skyline luge","Hāngī dinner"],
+["ZQN","Queenstown","NZ",-45.02,168.74,"ZQN",0,190,90,"12,1,2,7,8","3,11","Town centre|Frankton","Milford Sound cruise|Skyline gondola|Bungee jump at Kawarau|Shotover Jet|Arrowtown","Fergburger"],
+// Africa & islands
+["CPT","Cape Town","ZA",-33.97,18.60,"CPT",1,120,40,"12,1,2,3","10,11,4","V&A Waterfront|Camps Bay","Table Mountain|Cape of Good Hope|Boulders Beach penguins|Robben Island|Winelands day trip","V&A Food Market"],
+["JNB","Johannesburg","ZA",-26.13,28.24,"JNB",1,100,35,"9,10,11,3,4","5,8","Sandton|Rosebank","Apartheid Museum|Soweto tour|Pilanesberg safari|Sun City|Gold Reef City","Indian food in Fordsburg"],
+["NBO","Nairobi","KE",-1.32,36.93,"NBO",1,110,35,"7,8,9,1,2","6,10,12","Westlands|Karen","Nairobi National Park|Giraffe Centre|Sheldrick elephant orphanage|Karen Blixen Museum","Nyama choma at Carnivore; Indian in Westlands"],
+["MRA","Masai Mara","KE",-1.49,35.14,"via:NBO:5",0,350,120,"7,8,9,10","1,2,12","Mara reserve camps","Game drives|Great Migration (Jul–Oct)|Hot-air balloon safari|Maasai village visit","Camp dining (usually full board)"],
+["CAI","Cairo","EG",30.12,31.41,"CAI",1,90,30,"10,11,12,1,2,3","9,4","Downtown|Zamalek|Giza","Pyramids of Giza & Sphinx|Grand Egyptian Museum|Khan el-Khalili|Nile felucca sunset|Saqqara","Koshari at Abou Tarek"],
+["LXR","Luxor","EG",25.67,32.71,"LXR",0,80,40,"10,11,12,1,2,3","9,4","East Bank|West Bank","Valley of the Kings|Karnak Temple|Luxor Temple at night|Hot-air balloon at dawn|Hatshepsut Temple","Sofra restaurant"],
+["ASW","Aswan","EG",23.96,32.82,"ASW",0,75,40,"10,11,12,1,2","3,9","Corniche|Elephantine","Abu Simbel|Philae Temple|Felucca to Elephantine|Nubian village","Nubian home cooking"],
+["HRG","Hurghada","EG",27.18,33.80,"HRG",0,80,35,"3,4,5,9,10,11","6,12","El Gouna|Sahl Hasheesh","Giftun island snorkel|Red Sea diving|Desert quad safari|El Gouna marina","Marina restaurants"],
+["MRU","Mauritius","MU",-20.43,57.68,"MRU",1,170,40,"5,6,9,10,11,12","4,1","Grand Baie|Flic en Flac|Le Morne","Île aux Cerfs|Chamarel Seven Coloured Earth|Black River Gorges|Catamaran cruise|Port Louis market","Dholl puri from street stalls"],
+["SEZ","Seychelles","SC",-4.67,55.52,"SEZ",1,260,45,"4,5,10,11","3,9,12","Mahé|Praslin|La Digue","Anse Source d'Argent|Vallée de Mai|Beau Vallon beach|Island hopping|Ste Anne snorkelling","Creole takeaways in Victoria"]
+];
+
+// Major international gateway used when an airport has few international flights
+const HUB_FIX = {KBV:"BKK",USM:"BKK",CNX:"BKK",PQC:"SGN",LGK:"KUL",PEN:"KUL",JOG:"CGK",MPH:"MNL",NAV:"IST",JTR:"ATH",JMK:"ATH",BUS:"TBS",ZQN:"AKL",OOL:"SYD",CNS:"SYD",LXR:"CAI",ASW:"CAI",HRG:"CAI",PKR:"KTM",HIJ:"NRT",PUS:"ICN",CJU:"ICN",SVQ:"MAD",FLR:"FCO",SZG:"VIE",IXL:"DEL",UDR:"DEL",VNS:"DEL",IXZ:"MAA",ATQ:"DEL",SXR:"DEL",JAI:"DEL",RKT:"DXB"};
+
+const COUNTRY = {IN:"India",US:"United States",GB:"United Kingdom",FR:"France",DE:"Germany",IT:"Italy",ES:"Spain",CH:"Switzerland",NL:"Netherlands",AE:"UAE",SG:"Singapore",TH:"Thailand",JP:"Japan",AU:"Australia",NZ:"New Zealand",CA:"Canada",ID:"Indonesia",MY:"Malaysia",VN:"Vietnam",KR:"South Korea",CN:"China",TR:"Türkiye",GR:"Greece",PT:"Portugal",AT:"Austria",ZA:"South Africa",EG:"Egypt",BR:"Brazil",MX:"Mexico",IE:"Ireland",LK:"Sri Lanka",MV:"Maldives",NP:"Nepal",SA:"Saudi Arabia",QA:"Qatar",HK:"Hong Kong",PH:"Philippines",KE:"Kenya",MU:"Mauritius",RU:"Russia",GE:"Georgia",AZ:"Azerbaijan",KZ:"Kazakhstan",AR:"Argentina",BD:"Bangladesh",CZ:"Czechia",BT:"Bhutan",SC:"Seychelles",KH:"Cambodia"};
+
+// Food: dishes, vegetarian note, Indian food note, meal cost USD [street, casual, nice restaurant]
+const FOOD = {
+ IN:["Butter chicken|Masala dosa|Biryani|Chole bhature|Thali","Vegetarian food is everywhere.","Home ground.",[2,6,25]],
+ TH:["Pad Thai|Tom yum|Green curry|Mango sticky rice|Som tam","Ask for 'jay' (vegan) or 'mangsawirat' (vegetarian). Fish sauce is common, so say 'mai sai nam pla'.","Indian restaurants in every tourist hub; Pattaya and Bangkok's Pahurat have the most.",[3,9,35]],
+ VN:["Pho|Banh mi|Bun cha|Cao lau|Fresh spring rolls","Look for 'chay' (Buddhist vegetarian) restaurants.","Available in Hanoi, Da Nang, Hoi An and Ho Chi Minh City.",[2,7,30]],
+ ID:["Nasi goreng|Satay|Gado-gado|Mie goreng|Babi guling","Bali, especially Ubud, is very vegetarian- and vegan-friendly.","Plenty in Kuta, Seminyak and Ubud.",[3,8,35]],
+ MY:["Nasi lemak|Char kway teow|Roti canai|Laksa|Satay","Easy: South Indian banana-leaf restaurants are everywhere.","Brickfields in KL and Little India in Penang.",[3,8,30]],
+ SG:["Hainanese chicken rice|Chilli crab|Laksa|Kaya toast|Satay","Hawker centres have vegetarian stalls; Little India is fully veg-friendly.","Little India, plus Indian stalls in every hawker centre.",[5,15,60]],
+ AE:["Shawarma|Al machboos|Luqaimat|Manakish|Mixed grill","Easy, with lots of Indian and Lebanese vegetarian dishes.","Everywhere; Karama and Bur Dubai are Indian food hubs.",[5,18,70]],
+ QA:["Machboos|Shawarma|Harees|Luqaimat","Easy, with many Indian and Levantine options.","Common across Doha.",[5,18,70]],
+ HK:["Dim sum|Roast goose|Egg tarts|Wonton noodles|Pineapple bun","Moderate; Buddhist vegetarian restaurants are common.","Chungking Mansions in Tsim Sha Tsui.",[6,15,60]],
+ JP:["Sushi|Ramen|Okonomiyaki|Tempura|Wagyu","Hard: dashi (fish stock) is in most dishes. Use the HappyCow app.","Indian restaurants in Tokyo, Osaka and Kyoto.",[7,15,70]],
+ KR:["Bibimbap|Korean BBQ|Tteokbokki|Kimchi stew|Hotteok","Hard; Buddhist temple food and meatless bibimbap are safest.","A few in Seoul (Itaewon) and Busan.",[6,13,50]],
+ PH:["Adobo|Lechon|Sinigang|Halo-halo|Pancit","Moderate; meat is in most local dishes.","Available in Manila, Cebu and Boracay.",[3,8,30]],
+ LK:["Rice & curry|Hoppers|Kottu roti|String hoppers|Lamprais","Easy; vegetable curries are everywhere.","Common, especially in Colombo and Kandy.",[2,6,25]],
+ MV:["Garudhiya|Mas huni|Hedhikaa snacks|Grilled reef fish","Resorts cater to vegetarians; local islands are fish-heavy.","Most resorts have Indian dishes or Indian chefs.",[6,20,80]],
+ NP:["Momo|Dal bhat|Thukpa|Sel roti|Newari khaja","Easy; dal bhat is vegetarian.","Everywhere.",[2,5,20]],
+ BT:["Ema datshi|Momo|Red rice|Kewa datshi","Easy; ema datshi (chilli and cheese) is vegetarian.","Indian dishes in most hotels.",[4,10,30]],
+ TR:["Kebab|Meze|Lahmacun|Baklava|Turkish breakfast","Moderate; meze, lentil soup and gözleme are good picks.","A few in Istanbul (Sultanahmet, Taksim) and Antalya.",[5,12,45]],
+ GE:["Khachapuri|Khinkali|Badrijani|Churchkhela|Lobio","Moderate; many bean, walnut and aubergine dishes.","Several in Tbilisi and Batumi.",[4,10,35]],
+ AZ:["Plov|Dolma|Qutab|Lavangi","Moderate; qutab with greens is vegetarian.","A handful in Baku.",[4,10,35]],
+ KZ:["Beshbarmak|Plov|Baursak|Manti","Hard; meat-centred cuisine.","A few in Almaty.",[4,10,35]],
+ GB:["Fish & chips|Full English breakfast|Sunday roast|Afternoon tea|Chicken tikka masala","Easy; vegetarian options on every menu.","Everywhere; Southall, Wembley and Brick Lane in London.",[10,22,80]],
+ FR:["Croissant|Crêpes|Ratatouille|Cheese & wine|Macarons","Moderate, improving in big cities.","Paris has many around Gare du Nord (La Chapelle).",[10,25,90]],
+ IT:["Pizza|Pasta|Gelato|Risotto|Tiramisu","Easy; pizza, pasta and risotto have many vegetarian choices.","Found in Rome, Milan, Florence and Venice.",[8,22,80]],
+ ES:["Tapas|Paella|Churros|Patatas bravas|Tortilla","Moderate; ask for 'sin carne'.","In Barcelona and Madrid.",[8,20,70]],
+ CH:["Fondue|Raclette|Rösti|Swiss chocolate","Easy; cheese dishes are vegetarian.","In Zurich, Geneva, Lucerne and Interlaken.",[15,30,100]],
+ NL:["Stroopwafel|Bitterballen|Dutch pancakes|Herring|Rijsttafel","Easy in Amsterdam.","Several in Amsterdam.",[10,22,80]],
+ DE:["Bratwurst|Pretzel|Schnitzel|Spätzle|Black Forest cake","Easy in big cities.","In Frankfurt, Munich and Berlin.",[9,20,70]],
+ GR:["Gyros|Souvlaki|Moussaka|Greek salad|Spanakopita","Easy; lots of vegetarian mezze.","A few in Athens and Santorini.",[5,15,60]],
+ CZ:["Svíčková|Trdelník|Goulash|Fried cheese","Moderate; fried cheese is the classic veg dish.","A few in Prague.",[6,14,50]],
+ AT:["Wiener schnitzel|Apple strudel|Sachertorte|Käsespätzle","Moderate; käsespätzle is vegetarian.","In Vienna and Salzburg.",[9,20,70]],
+ PT:["Pastel de nata|Bacalhau|Francesinha|Grilled sardines","Moderate.","Common in Lisbon (Martim Moniz).",[7,16,60]],
+ US:["Burgers|Pizza slice|BBQ|Bagels|Tacos","Easy; vegetarian options everywhere.","In every major city; Jackson Heights (NYC), Edison (NJ).",[12,25,90]],
+ CA:["Poutine|Butter tarts|Peameal bacon|Maple treats","Easy.","Brampton and Surrey have huge Indian food scenes.",[12,24,80]],
+ MX:["Tacos|Guacamole|Enchiladas|Ceviche|Churros","Moderate; bean and cheese dishes work well.","A few in Cancún and Playa del Carmen.",[4,12,45]],
+ AU:["Meat pie|Barramundi|Avocado toast|Pavlova|Tim Tams","Easy.","Harris Park (Sydney), Dandenong (Melbourne).",[12,25,90]],
+ NZ:["Hāngī|Fish & chips|Pavlova|Hokey pokey ice cream","Easy.","In Auckland, Queenstown and Rotorua.",[12,25,80]],
+ ZA:["Braai|Bobotie|Bunny chow|Biltong","Moderate.","Strong Indian-origin food in Durban, Johannesburg and Cape Town.",[6,14,45]],
+ KE:["Nyama choma|Ugali|Pilau|Chapati|Samosa","Moderate; lots of Indian-influenced vegetarian dishes.","Nairobi has many Indian restaurants.",[4,10,35]],
+ EG:["Koshari|Ful medames|Falafel (ta'meya)|Molokhia","Easy; koshari and falafel are vegetarian.","A few in Cairo and Hurghada.",[3,8,30]],
+ MU:["Dholl puri|Gateau piment|Mine frit|Seafood curry","Easy; strong Indian-origin cuisine.","Everywhere.",[4,12,45]],
+ SC:["Creole fish curry|Ladob|Grilled fish|Octopus curry","Moderate.","A few in Victoria and resorts.",[8,20,70]]
+};
+
+// Known transfers: mode, hours, USD per person, note
+const XFER = {
+"HKT-KBV":["Ferry or private car",2.5,18,"Ferry via Phi Phi (about 4h, scenic) or 2.5h by road."],
+"BKK-PYX":["Private car or bus",2,12,"Bus from Ekkamai about ₹500; taxi about ₹3,000 per car."],
+"HKT-PYX":["Flight to U-Tapao + car",3.5,70,"Fly Phuket → U-Tapao (UTP), then 45 min by car to Pattaya."],
+"KBV-PYX":["Flight to U-Tapao + car",3.5,70,"Fly Krabi → U-Tapao (UTP), then 45 min by car to Pattaya."],
+"HKT-USM":["Flight",1,95,"Bangkok Airways direct."],"KBV-USM":["Bus + ferry",6,30,"Joint ticket via Don Sak pier."],
+"CNX-PYX":["Flight to U-Tapao + car",3,75,"Fly Chiang Mai → U-Tapao, then car."],
+"DPS-UBD":["Private car",1.5,15,""],"DPS-GIL":["Fast boat",3,40,"From Padang Bai or Serangan harbour."],"UBD-GIL":["Car + fast boat",4,45,""],
+"HAN-HLB":["Limousine bus",2.5,15,"Most cruises include a shuttle from Hanoi."],"DAD-HOI":["Private car",.75,10,""],
+"HLB-DAD":["Car to Hanoi + flight",5,60,""],"HLB-SGN":["Car to Hanoi + flight",5.5,65,""],
+"CMB-KDY":["Train or car",3,8,"Intercity train or private car."],"KDY-ELL":["Scenic train",7,6,"One of the world's great rail rides; book reserved seats early."],"CMB-GAL":["Expressway car or train",2.5,10,""],"KDY-SGR":["Private car",2.5,25,""],"CMB-SGR":["Private car",4,40,""],"ELL-GAL":["Private car",5,55,""],"SGR-ELL":["Private car",5.5,60,""],
+"MLE-RES":["Speedboat or seaplane",.75,150,"Speedboat about $100, seaplane about $500 per person return; the resort arranges it."],
+"KTM-PKR":["Flight",.5,95,"Or tourist bus, about 7h and ₹1,000."],"KTM-CHT":["Tourist bus or car",5,15,""],"PKR-CHT":["Tourist bus",5,15,""],
+"PBH-THI":["Private car",1.2,0,"Included with your licensed Bhutan guide."],"PBH-PUN":["Private car",3.5,0,"Included with your licensed Bhutan guide."],"THI-PUN":["Private car",2.5,0,"Included with your licensed Bhutan guide."],
+"DEL-AGR":["Train (Gatimaan / Vande Bharat)",1.8,12,"Or 3.5h by expressway."],"JAI-AGR":["Train or car",4,10,""],"DEL-JAI":["Train or car",4.5,10,""],"COK-MNR":["Private car",4,30,""],"COK-ALP":["Private car",1.5,15,""],"MNR-ALP":["Private car",4.5,35,""],
+"ZRH-LUZ":["Train",.8,30,"Covered by the Swiss Travel Pass."],"LUZ-INT":["Train (Luzern–Interlaken Express)",1.9,40,""],"ZRH-INT":["Train",2,55,""],"INT-ZMT":["Train",2.3,70,""],"GVA-ZMT":["Train",3.5,90,""],"LUZ-ZMT":["Train",3.3,90,""],"GVA-INT":["Train",2.8,70,""],"GVA-LUZ":["Train",3,75,""],"ZRH-GVA":["Train",2.7,80,""],"ZRH-ZMT":["Train",3.3,95,""],
+"NRT-HKN":["Train (Odakyu Romancecar)",2,20,""],"KIX-KYO":["Train",1.2,12,""],"NRT-KYO":["Shinkansen",2.3,95,"Tokyo → Kyoto on the Nozomi."],"NRT-KIX":["Shinkansen",2.6,100,"Tokyo → Shin-Osaka."],"KYO-HIJ":["Shinkansen",1.7,75,""],"KIX-HIJ":["Shinkansen",1.5,70,""],"HKN-KYO":["Shinkansen",2.3,90,"Odawara → Kyoto."],"HKN-KIX":["Shinkansen",2.6,95,""],"NRT-HIJ":["Shinkansen",4,130,""],
+"FCO-FLR":["High-speed train",1.6,35,""],"FLR-VCE":["High-speed train",2.1,40,""],"FCO-NAP":["High-speed train",1.2,30,"Then 1.5h onward to Amalfi or Sorrento."],"VCE-MXP":["High-speed train",2.4,35,""],"FLR-MXP":["High-speed train",1.9,45,""],"FCO-VCE":["High-speed train",3.8,55,""],"FCO-MXP":["High-speed train",3,60,""],"FLR-NAP":["High-speed train",2.8,50,""],
+"CDG-LYS":["TGV train",2,60,""],"LYS-NCE":["Train",4.5,60,""],"CDG-NCE":["Flight or TGV",1.5,80,"1h30 flight, or 6h by TGV."],
+"BCN-MAD":["High-speed train",2.6,45,""],"MAD-SVQ":["High-speed train",2.5,45,""],"BCN-SVQ":["Flight",1.6,60,""],
+"LHR-EDI":["Train (LNER)",4.5,70,"Or a 1h20 flight."],"LHR-MAN":["Train (Avanti)",2.1,60,""],"MAN-EDI":["Train",3.2,50,""],
+"ATH-JTR":["Ferry or flight",5,70,"Fast ferry 5h, or a 45-min flight."],"ATH-JMK":["Ferry",2.5,70,""],"JTR-JMK":["Ferry",2.3,90,""],
+"YYZ-NIA":["Car or bus",1.5,25,""],"AKL-ROT":["Car or bus",3,30,""],
+"NBO-MRA":["Bush flight or road",1,220,"45-min safari flight from Wilson Airport, or 5–6h by road."],
+"HAN-DAD":["Flight",1.3,45,"Or a 16h sleeper train."],"DAD-SGN":["Flight",1.3,45,""],"SGN-PQC":["Flight",1,40,""],"HOI-SGN":["Car to Da Nang + flight",2.5,55,""],"HOI-HAN":["Car to Da Nang + flight",2.5,55,""],
+"KUL-GNT":["Car + cable car",1.5,15,""],"TBS-KAZ":["Car on the Georgian Military Road",3,30,""],"VIE-SZG":["Train (Railjet)",2.5,40,""],"LIS-OPO":["Train (Alfa Pendular)",2.8,30,""],
+"DXB-AUH":["Car or bus",1.5,15,""],"DXB-RKT":["Car",1.2,25,""],"AUH-RKT":["Car",2.2,40,""],
+"CAI-LXR":["Flight or sleeper train",1,60,"1h flight, or the overnight sleeper train."],"LXR-ASW":["Nile cruise or car",3,25,"A 3–4 night Nile cruise is the classic way."],"CAI-HRG":["Flight",1,50,""],"LXR-HRG":["Car",4,30,""],
+"ICN-PUS":["KTX train",2.6,45,""],"SYD-MEL":["Flight",1.4,90,""],"DEL-ATQ":["Train (Vande Bharat)",5.5,15,""],"BOM-GOI":["Flight",1.2,45,"Or the Vande Bharat train, about 8h."]
+};
+const RAIL = {JP:.2,KR:.08,GB:.22,FR:.14,IT:.12,ES:.12,CH:.32,DE:.14,AT:.12,NL:.14,CZ:.05,IN:.02,PT:.08};
+const DOM_PRICE = {US:1.6,CA:1.6,AU:1.5,NZ:1.5,GB:1.3,FR:1.3,IT:1.2,ES:1.1,DE:1.3,CH:1.6,JP:1.3,KR:1.1,NP:1.6,GR:1.2,EG:.9};
+
+// Visa for Indian passport holders: type, INR per person (fee + usual service charge), processing days, stay, note, official source
+const SCH = ["Schengen visa",10500,15,"Up to 90 days in 180","€90 fee plus VFS service charge. One visa covers all Schengen countries; apply to the country where you spend the most nights.","https://visa.vfsglobal.com/ind/en"];
+const VISA = {
+ IN:["No visa (domestic)",0,0,"—","Carry a government photo ID for domestic flights.",""],
+ AE:["e-Visa",7000,3,"30 days","Visa on arrival if you hold a valid US visa or green card, or a UK/EU residence permit.","https://icp.gov.ae"],
+ QA:["Visa-free",0,0,"30 days","Show a confirmed return ticket and hotel booking on arrival.","https://www.visitqatar.com"],
+ SG:["e-Visa via agent",3200,5,"Up to 30 days","Apply through an authorised visa agent or your airline.","https://www.ica.gov.sg"],
+ TH:["Visa-free",0,0,"Up to 60 days","Policy is under review and may shorten. Submit the Thailand Digital Arrival Card within 3 days of arrival.","https://tdac.immigration.go.th"],
+ ID:["e-VoA",2900,1,"30 days","IDR 500,000 fee. Bali also charges a tourist levy of IDR 150,000.","https://evisa.imigrasi.go.id"],
+ MY:["Visa-free",0,0,"30 days","Submit the Malaysia Digital Arrival Card within 3 days of arrival.","https://imigresen-online.imi.gov.my/mdac/main"],
+ VN:["e-Visa",2300,4,"Up to 90 days","USD 25 single entry; apply only on the official portal.","https://evisa.gov.vn"],
+ JP:["e-Visa / sticker",600,6,"Up to 90 days","Apply through an accredited agency (VFS). Bank statements and itinerary required.","https://www.in.emb-japan.go.jp"],
+ KR:["Sticker visa",3500,7,"Up to 90 days","Apply via KVAC. Allow extra time in spring and autumn.","https://www.visa.go.kr"],
+ HK:["Pre-arrival registration",0,1,"14 days","Free online registration before travel.","https://www.immd.gov.hk"],
+ MV:["Visa on arrival",0,0,"30 days","Free. File the IMUGA traveller declaration within 96 hours of arrival.","https://imuga.immigration.gov.mv"],
+ LK:["ETA",0,1,"30 days","Free ETA for Indian citizens while the waiver scheme runs.","https://www.eta.gov.lk"],
+ NP:["No visa",0,0,"No limit","Carry a passport or voter ID. Aadhaar is not accepted.",""],
+ BT:["Entry permit",0,0,"Issued at entry","Sustainable Development Fee of ₹1,200 per night for Indian visitors.","https://www.bhutan.travel"],
+ PH:["Visa-free",0,0,"14 days","Longer stays need an e-Visa.","https://evisa.gov.ph"],
+ TR:["Sticker visa",6000,15,"Up to 30 days","e-Visa (USD 60) only if you hold a valid US, UK or Schengen visa.","https://www.evisa.gov.tr"],
+ GE:["e-Visa",1900,5,"30 days","Visa-free if you hold a valid US, UK or Schengen visa.","https://www.evisa.gov.ge"],
+ AZ:["e-Visa",2400,3,"30 days","ASAN e-Visa, USD 26.","https://evisa.gov.az"],
+ KZ:["Visa-free",0,0,"14 days","",""],
+ FR:SCH,IT:SCH,ES:SCH,NL:SCH,DE:SCH,CH:SCH,AT:SCH,GR:SCH,PT:SCH,CZ:SCH,
+ GB:["Standard Visitor visa",15000,21,"Up to 6 months","£127 fee; priority service costs extra.","https://www.gov.uk/standard-visitor"],
+ US:["B1/B2 visa",16500,90,"Up to 10-year validity","USD 185 fee. Interview waits can run for months; a USD 250 visa integrity fee has been legislated.","https://travel.state.gov"],
+ CA:["Visitor visa",11000,45,"Up to 6 months per entry","CAD 100 fee plus CAD 85 biometrics.","https://www.canada.ca/en/immigration-refugees-citizenship.html"],
+ MX:["Visa (or US-visa waiver)",4700,15,"Up to 180 days","Visa-free if you hold a valid US, UK, Canada or Schengen visa.","https://consulmex.sre.gob.mx"],
+ AU:["Visitor visa (600)",11000,25,"Up to 3 months per entry","Fee about AUD 200.","https://immi.homeaffairs.gov.au"],
+ NZ:["Visitor visa + IVL",16000,25,"Up to 9 months","Visa fee plus International Visitor Levy of NZD 100.","https://www.immigration.govt.nz"],
+ ZA:["Visitor visa",1500,10,"Up to 90 days","No visa fee for Indians; VFS service fee applies.","https://www.dha.gov.za"],
+ KE:["eTA",3000,3,"90 days","Electronic Travel Authorisation, about USD 34.","https://www.etakenya.go.ke"],
+ EG:["e-Visa",2200,7,"30 days","USD 25 single entry.","https://www.visa2egypt.gov.eg"],
+ MU:["Visa-free",0,0,"90 days","Return ticket and accommodation proof required.",""],
+ SC:["Visitor permit + travel authorisation",900,2,"30 days","Visitor permit is free; online travel authorisation costs a small fee.","https://seychelles.govtas.com"]
+};
+const FX = {INR:1,USD:88.6,EUR:102.4,GBP:116.2,AED:24.1,SGD:68.3,THB:2.72};
+const CUR_SYM = {INR:"₹",USD:"$",EUR:"€",GBP:"£",AED:"AED ",SGD:"S$",THB:"฿"};
+
+const HOL = {"IN":[["2026-11-08","Diwali"],["2026-11-24","Guru Nanak's Birthday"],["2026-12-25","Christmas"],["2027-01-26","Republic Day"],["2027-03-06","Maha Shivaratri"],["2027-03-10","Eid al-Fitr*"],["2027-03-22","Holi"],["2027-03-26","Good Friday"],["2027-04-14","Dr. B. R. Ambedkar's Birthday"],["2027-04-15","Ram Navami"],["2027-04-18","Mahavira's Birthday"],["2027-05-17","Eid al-Adha*"],["2027-05-20","Buddha Purnima"],["2027-06-16","Ashura*"],["2027-08-15","Independence Day"],["2027-08-25","Janmashtami (Vaishnava)"],["2027-10-02","Mahatma Gandhi's Birthday"],["2027-10-09","Dussehra"],["2027-10-29","Diwali"],["2027-11-14","Guru Nanak's Birthday"],["2027-12-25","Christmas"]],"US":[["2026-11-11","Veterans Day"],["2026-11-26","Thanksgiving Day"],["2026-12-25","Christmas Day"],["2027-01-01","New Year's Day"],["2027-01-18","Martin Luther King Jr. Day"],["2027-02-15","Washington's Birthday"],["2027-05-31","Memorial Day"],["2027-06-18","Juneteenth National Independence Day (observed)"],["2027-06-19","Juneteenth National Independence Day"],["2027-07-04","Independence Day"],["2027-07-05","Independence Day (observed)"],["2027-09-06","Labor Day"],["2027-10-11","Columbus Day"],["2027-11-11","Veterans Day"],["2027-11-25","Thanksgiving Day"],["2027-12-24","Christmas Day (observed)"],["2027-12-25","Christmas Day"],["2027-12-31","New Year's Day (observed)"]],"GB":[["2026-12-25","Christmas Day"],["2026-12-26","Boxing Day"],["2026-12-28","Boxing Day (observed)"],["2027-01-01","New Year's Day"],["2027-03-26","Good Friday"],["2027-05-03","May Day"],["2027-05-31","Spring Bank Holiday"],["2027-12-25","Christmas Day"],["2027-12-26","Boxing Day"],["2027-12-27","Christmas Day (observed)"],["2027-12-28","Boxing Day (observed)"]],"FR":[["2026-11-01","All Saints' Day"],["2026-11-11","Armistice Day"],["2026-12-25","Christmas Day"],["2027-01-01","New Year's Day"],["2027-03-29","Easter Monday"],["2027-05-01","Labor Day"],["2027-05-06","Ascension Day"],["2027-05-08","Victory Day"],["2027-05-17","Pentecost Monday"],["2027-07-14","National Day"],["2027-08-15","Assumption Day"],["2027-11-01","All Saints' Day"],["2027-11-11","Armistice Day"],["2027-12-25","Christmas Day"]],"DE":[["2026-12-25","Christmas Day"],["2026-12-26","Second Day of Christmas"],["2027-01-01","New Year's Day"],["2027-03-26","Good Friday"],["2027-03-29","Easter Monday"],["2027-05-01","Labor Day"],["2027-05-06","Ascension Day"],["2027-05-17","Pentecost Monday"],["2027-10-03","German Unity Day"],["2027-12-25","Christmas Day"],["2027-12-26","Second Day of Christmas"]],"IT":[["2026-11-01","All Saints' Day"],["2026-12-08","Immaculate Conception"],["2026-12-25","Christmas Day"],["2026-12-26","Saint Stephen's Day"],["2027-01-01","New Year's Day"],["2027-01-06","Epiphany"],["2027-03-28","Easter Sunday"],["2027-03-29","Easter Monday"],["2027-04-25","Liberation Day"],["2027-05-01","Labor Day"],["2027-06-02","Republic Day"],["2027-08-15","Assumption Of Mary Day"],["2027-10-04","Saint Francis of Assisi, Patron Saint of Italy"],["2027-11-01","All Saints' Day"],["2027-11-07","National Unity Day"],["2027-12-08","Immaculate Conception"],["2027-12-25","Christmas Day"],["2027-12-26","Saint Stephen's Day"]],"ES":[["2026-12-08","Immaculate Conception"],["2026-12-25","Christmas Day"],["2027-01-01","New Year's Day"],["2027-01-06","Epiphany"],["2027-03-26","Good Friday"],["2027-05-01","Labor Day"],["2027-10-12","National Day"],["2027-11-01","All Saints' Day"],["2027-12-06","Constitution Day"],["2027-12-08","Immaculate Conception"],["2027-12-25","Christmas Day"]],"CH":[["2026-12-25","Christmas Day"],["2027-01-01","New Year's Day"],["2027-05-06","Ascension Day"],["2027-08-01","National Day"],["2027-12-25","Christmas Day"]],"NL":[["2026-12-25","Christmas Day"],["2026-12-26","Second Day of Christmas"],["2027-01-01","New Year's Day"],["2027-03-26","Good Friday"],["2027-03-28","Easter Sunday"],["2027-03-29","Easter Monday"],["2027-04-27","King's Day"],["2027-05-06","Ascension Day"],["2027-05-16","Pentecost"],["2027-05-17","Pentecost Monday"],["2027-12-25","Christmas Day"],["2027-12-26","Second Day of Christmas"]],"AE":[["2026-12-02","National Day"],["2026-12-03","National Day"],["2027-01-01","New Year's Day"],["2027-03-09","Eid al-Fitr*"],["2027-03-10","Eid al-Fitr Holiday*"],["2027-03-11","Eid al-Fitr Holiday*"],["2027-05-15","Day of Arafah*"],["2027-05-16","Eid al-Adha*"],["2027-05-17","Eid al-Adha Holiday*"],["2027-05-18","Eid al-Adha Holiday*"],["2027-06-06","Islamic New Year*"],["2027-08-14","Prophet's Birthday*"],["2027-12-02","National Day"],["2027-12-03","National Day"]],"SG":[["2026-11-08","Diwali"],["2026-11-09","Diwali (observed)"],["2026-12-25","Christmas Day"],["2027-01-01","New Year's Day"],["2027-02-06","Chinese New Year"],["2027-02-07","Chinese New Year"],["2027-02-08","Chinese New Year (observed)"],["2027-03-10","Eid al-Fitr"],["2027-03-26","Good Friday"],["2027-05-01","Labor Day"],["2027-05-17","Eid al-Adha"],["2027-05-20","Vesak Day"],["2027-08-09","National Day"],["2027-10-28","Diwali"],["2027-12-25","Christmas Day"]],"TH":[["2026-12-05","HM King Bhumibol Adulyadej the Great's Birthday"],["2026-12-07","HM King Bhumibol Adulyadej the Great's Birthday "],["2026-12-10","Constitution Day"],["2026-12-31","New Year's Eve"],["2027-01-01","New Year's Day"],["2027-01-09","National Children's Day"],["2027-02-21","Makha Bucha"],["2027-02-22","Makha Bucha (in lieu)"],["2027-04-06","Chakri Memorial Day"],["2027-04-13","Songkran Festival"],["2027-04-14","Songkran Festival"],["2027-04-15","Songkran Festival"],["2027-05-01","National Labor Day"],["2027-05-03","National Labor Day (in lieu)"],["2027-05-04","Coronation Day"],["2027-05-20","Visakha Bucha"],["2027-06-03","HM Queen Suthida's Birthday"],["2027-07-18","Asarnha Bucha"],["2027-07-19","Buddhist Lent Day"],["2027-07-20","Asarnha Bucha (in lieu)"],["2027-07-28","HM King Maha Vajiralongkorn's Birthday"],["2027-08-12","HM Queen Sirikit The Queen Mother's Birthday"],["2027-10-13","HM King Bhumibol Adulyadej Memorial Day"],["2027-10-23","HM King Chulalongkorn Memorial Day"],["2027-10-25","HM King Chulalongkorn Memorial Day (in lieu)"],["2027-12-05","HM King Bhumibol Adulyadej the Great's Birthday"],["2027-12-06","HM King Bhumibol Adulyadej the Great's Birthday "],["2027-12-10","Constitution Day"],["2027-12-31","New Year's Eve"]],"JP":[["2026-11-03","Culture Day"],["2026-11-23","Labor Thanksgiving Day"],["2027-01-01","New Year's Day"],["2027-01-11","Coming of Age Day"],["2027-02-11","Foundation Day"],["2027-02-23","Emperor's Birthday"],["2027-03-21","Vernal Equinox Day"],["2027-03-22","Substitute Holiday"],["2027-04-29","Showa Day"],["2027-05-03","Constitution Day"],["2027-05-04","Greenery Day"],["2027-05-05","Children's Day"],["2027-07-19","Marine Day"],["2027-08-11","Mountain Day"],["2027-09-20","Respect for the Aged Day"],["2027-09-23","Autumnal Equinox Day"],["2027-10-11","Sports Day"],["2027-11-03","Culture Day"],["2027-11-23","Labor Thanksgiving Day"]],"AU":[["2026-12-25","Christmas Day"],["2026-12-26","Boxing Day"],["2027-01-01","New Year's Day"],["2027-01-26","Australia Day"],["2027-03-26","Good Friday"],["2027-03-29","Easter Monday"],["2027-04-25","ANZAC Day"],["2027-12-25","Christmas Day"],["2027-12-26","Boxing Day"]],"NZ":[["2026-12-25","Christmas Day"],["2026-12-26","Boxing Day"],["2026-12-28","Boxing Day (observed)"],["2027-01-01","New Year's Day"],["2027-01-02","Day after New Year's Day"],["2027-01-04","Day after New Year's Day (observed)"],["2027-02-06","Waitangi Day"],["2027-02-08","Waitangi Day (observed)"],["2027-03-26","Good Friday"],["2027-03-29","Easter Monday"],["2027-04-25","Anzac Day"],["2027-04-26","Anzac Day (observed)"],["2027-06-07","King's Birthday"],["2027-06-25","Matariki"],["2027-10-25","Labour Day"],["2027-12-25","Christmas Day"],["2027-12-26","Boxing Day"],["2027-12-27","Christmas Day (observed)"],["2027-12-28","Boxing Day (observed)"]],"CA":[["2026-12-25","Christmas Day"],["2027-01-01","New Year's Day"],["2027-03-26","Good Friday"],["2027-07-01","Canada Day"],["2027-09-06","Labor Day"],["2027-12-25","Christmas Day"],["2027-12-27","Christmas Day (observed)"]],"ID":[["2026-12-25","Christmas Day"],["2027-01-01","New Year's Day"],["2027-01-05","Isra' and Mi'raj"],["2027-02-06","Lunar New Year"],["2027-03-08","Day of Silence"],["2027-03-10","Eid al-Fitr*"],["2027-03-11","Eid al-Fitr Second Day*"],["2027-03-26","Good Friday"],["2027-03-28","Easter Sunday"],["2027-05-01","International Labor Day"],["2027-05-06","Ascension Day"],["2027-05-17","Eid al-Adha*"],["2027-05-20","Vesak Day"],["2027-06-01","Pancasila Day"],["2027-06-06","Islamic New Year"],["2027-08-15","Prophet's Birthday"],["2027-08-17","Independence Day"],["2027-12-25","Christmas Day"],["2027-12-26","Isra' and Mi'raj"]],"MY":[["2026-12-25","Christmas Day"],["2027-02-06","Chinese New Year"],["2027-02-07","Chinese New Year (Second Day)"],["2027-02-08","Chinese New Year (Second Day) (observed)"],["2027-03-10","Eid al-Fitr"],["2027-03-11","Eid al-Fitr (Second Day)"],["2027-05-01","Labor Day"],["2027-05-17","Eid al-Adha"],["2027-05-20","Vesak Day"],["2027-06-06","Islamic New Year"],["2027-06-07","Birthday of HM Yang di-Pertuan Agong"],["2027-08-15","Prophet Muhammad's Birthday"],["2027-08-16","Prophet Muhammad's Birthday (observed)"],["2027-08-31","National Day"],["2027-09-16","Malaysia Day"],["2027-12-25","Christmas Day"]],"VN":[["2026-11-24","Vietnam Cultural Day"],["2027-01-01","New Year's Day"],["2027-02-04","29 of Lunar New Year"],["2027-02-05","Lunar New Year's Eve"],["2027-02-06","Lunar New Year"],["2027-02-07","Second Day of Lunar New Year"],["2027-02-08","Third Day of Lunar New Year"],["2027-02-09","Fourth Day of Lunar New Year"],["2027-02-10","Fifth Day of Lunar New Year"],["2027-04-16","Hung Kings' Commemoration Day"],["2027-04-30","Liberation Day/Reunification Day"],["2027-05-01","International Labor Day"],["2027-05-03","International Labor Day (observed)"],["2027-09-02","National Day"],["2027-09-03","National Day"],["2027-11-24","Vietnam Cultural Day"]],"KR":[["2026-12-25","Christmas Day"],["2027-01-01","New Year's Day"],["2027-02-06","The day preceding Korean New Year"],["2027-02-07","Korean New Year"],["2027-02-08","The second day of Korean New Year"],["2027-02-09","Alternative holiday for Korean New Year"],["2027-03-01","Independence Movement Day"],["2027-05-01","Labor Day"],["2027-05-03","Alternative holiday for Labor Day"],["2027-05-05","Children's Day"],["2027-05-13","Buddha's Birthday"],["2027-06-06","Memorial Day"],["2027-07-17","Constitution Day"],["2027-07-19","Alternative holiday for Constitution Day"],["2027-08-15","Liberation Day"],["2027-08-16","Alternative holiday for Liberation Day"],["2027-09-14","The day preceding Chuseok"],["2027-09-15","Chuseok"],["2027-09-16","The second day of Chuseok"],["2027-10-03","National Foundation Day"],["2027-10-04","Alternative holiday for National Foundation Day"],["2027-10-09","Hangul Day"],["2027-10-11","Alternative holiday for Hangul Day"],["2027-12-25","Christmas Day"],["2027-12-27","Alternative holiday for Christmas Day"]],"CN":[["2027-01-01","New Year's Day"],["2027-02-05","Chinese New Year's Eve"],["2027-02-06","Chinese New Year (Spring Festival)"],["2027-02-07","Chinese New Year (Spring Festival)"],["2027-02-08","Chinese New Year (Spring Festival)"],["2027-02-09","Chinese New Year (Spring Festival) (observed)"],["2027-02-10","Chinese New Year (Spring Festival) (observed)"],["2027-04-05","Tomb-Sweeping Day"],["2027-05-01","Labor Day"],["2027-05-02","Labor Day"],["2027-05-03","Labor Day (observed)"],["2027-05-04","Labor Day (observed)"],["2027-06-09","Dragon Boat Festival"],["2027-09-15","Mid-Autumn Festival"],["2027-10-01","National Day"],["2027-10-02","National Day"],["2027-10-03","National Day"],["2027-10-04","National Day (observed)"],["2027-10-05","National Day (observed)"]],"TR":[["2027-01-01","New Year's Day"],["2027-03-09","Eid al-Fitr"],["2027-03-10","Eid al-Fitr"],["2027-03-11","Eid al-Fitr"],["2027-04-23","National Sovereignty and Children's Day"],["2027-05-01","Labor and Solidarity Day"],["2027-05-16","Eid al-Adha"],["2027-05-17","Eid al-Adha"],["2027-05-18","Eid al-Adha"],["2027-05-19","Commemoration of Atatürk, Youth and Sports Day"],["2027-07-15","Democracy and National Unity Day"],["2027-08-30","Victory Day"],["2027-10-29","Republic Day"]],"GR":[["2026-12-25","Christmas Day"],["2026-12-26","Glorifying Mother of God"],["2027-01-01","New Year's Day"],["2027-01-06","Epiphany"],["2027-03-15","Green Monday"],["2027-03-25","Independence Day"],["2027-04-30","Good Friday"],["2027-05-01","Labor Day"],["2027-05-03","Easter Monday"],["2027-05-04","Labor Day (observed)"],["2027-06-21","Pentecost Monday"],["2027-08-15","Dormition of the Mother of God"],["2027-10-28","Ohi Day"],["2027-12-25","Christmas Day"],["2027-12-26","Glorifying Mother of God"]],"PT":[["2026-11-01","All Saints' Day"],["2026-12-01","Restoration of Independence Day"],["2026-12-08","Immaculate Conception"],["2026-12-25","Christmas Day"],["2027-01-01","New Year's Day"],["2027-03-26","Good Friday"],["2027-03-28","Easter Sunday"],["2027-04-25","Freedom Day"],["2027-05-01","Labor Day"],["2027-05-27","Corpus Christi"],["2027-06-10","Day of Portugal, Camões, and the Portuguese Comm"],["2027-08-15","Assumption Day"],["2027-10-05","Republic Day"],["2027-11-01","All Saints' Day"],["2027-12-01","Restoration of Independence Day"],["2027-12-08","Immaculate Conception"],["2027-12-25","Christmas Day"]],"AT":[["2026-11-01","All Saints' Day"],["2026-12-08","Immaculate Conception"],["2026-12-25","Christmas Day"],["2026-12-26","Saint Stephen's Day"],["2027-01-01","New Year's Day"],["2027-01-06","Epiphany"],["2027-03-29","Easter Monday"],["2027-05-01","Labor Day"],["2027-05-06","Ascension Day"],["2027-05-17","Pentecost Monday"],["2027-05-27","Corpus Christi"],["2027-08-15","Assumption Day"],["2027-10-26","National Day"],["2027-11-01","All Saints' Day"],["2027-12-08","Immaculate Conception"],["2027-12-25","Christmas Day"],["2027-12-26","Saint Stephen's Day"]],"ZA":[["2026-11-04","Local Government Elections"],["2026-12-16","Day of Reconciliation"],["2026-12-25","Christmas Day"],["2026-12-26","Day of Goodwill"],["2027-01-01","New Year's Day"],["2027-03-21","Human Rights Day"],["2027-03-22","Human Rights Day (observed)"],["2027-03-26","Good Friday"],["2027-03-29","Family Day"],["2027-04-27","Freedom Day"],["2027-05-01","Workers' Day"],["2027-06-16","Youth Day"],["2027-08-09","National Women's Day"],["2027-09-24","Heritage Day"],["2027-12-16","Day of Reconciliation"],["2027-12-25","Christmas Day"],["2027-12-26","Day of Goodwill"],["2027-12-27","Day of Goodwill (observed)"]],"EG":[["2027-01-07","Coptic Christmas Day"],["2027-01-28","January 25th Revolution and National Police Day "],["2027-03-09","Eid al-Fitr*"],["2027-03-10","Eid al-Fitr*"],["2027-04-29","Sinai Liberation Day (observed)"],["2027-05-01","Labor Day"],["2027-05-03","Spring Festival"],["2027-05-15","Day of Arafah*"],["2027-05-16","Eid al-Adha*"],["2027-05-17","Eid al-Adha*"],["2027-05-18","Eid al-Adha*"],["2027-06-10","Islamic New Year (observed, estimated)"],["2027-07-01","June 30 Revolution Day (observed)"],["2027-07-23","July 23 Revolution Day"],["2027-08-14","Prophet's Birthday*"],["2027-10-07","Armed Forces Day (observed)"]],"BR":[["2026-11-02","All Souls' Day"],["2026-11-15","Republic Proclamation Day"],["2026-11-20","National Day of Zumbi and Black Awareness"],["2026-12-25","Christmas Day"],["2027-01-01","Universal Fraternization Day"],["2027-03-26","Good Friday"],["2027-04-21","Tiradentes' Day"],["2027-05-01","Worker's Day"],["2027-09-07","Independence Day"],["2027-10-12","Our Lady of Aparecida"],["2027-11-02","All Souls' Day"],["2027-11-15","Republic Proclamation Day"],["2027-11-20","National Day of Zumbi and Black Awareness"],["2027-12-25","Christmas Day"]],"MX":[["2026-11-16","Revolution Day"],["2026-12-25","Christmas Day"],["2027-01-01","New Year's Day"],["2027-02-01","Constitution Day"],["2027-03-15","Benito Juárez's birthday"],["2027-05-01","Labor Day"],["2027-09-16","Independence Day"],["2027-11-15","Revolution Day"],["2027-12-25","Christmas Day"]],"IE":[["2026-12-25","Christmas Day"],["2026-12-26","Saint Stephen's Day"],["2027-01-01","New Year's Day"],["2027-02-01","Saint Brigid's Day"],["2027-03-17","Saint Patrick's Day"],["2027-03-29","Easter Monday"],["2027-05-03","May Bank Holiday"],["2027-06-07","June Bank Holiday"],["2027-08-02","August Bank Holiday"],["2027-10-25","October Bank Holiday"],["2027-12-25","Christmas Day"],["2027-12-26","Saint Stephen's Day"]],"LK":[["2026-11-08","Diwali"],["2026-11-24","Il Full Moon Poya Day"],["2026-12-23","Unduvap Full Moon Poya Day"],["2026-12-25","Christmas Day"]],"MV":[["2026-11-03","Victory Day"],["2026-11-11","Republic Day"],["2027-01-01","New Year's Day"],["2027-02-08","First Day of Ramadan*"],["2027-03-09","Eid al-Fitr*"],["2027-03-10","Eid al-Fitr Holiday*"],["2027-03-11","Eid al-Fitr Holiday*"],["2027-05-01","International Worker's Day"],["2027-05-15","Day of Arafah*"],["2027-05-16","Eid al-Adha*"],["2027-05-17","Eid al-Adha Holiday*"],["2027-05-18","Eid al-Adha Holiday*"],["2027-05-19","Eid al-Adha Holiday*"],["2027-06-06","Islamic New Year*"],["2027-07-26","Independence Day"],["2027-08-03","National Day*"],["2027-08-14","Prophet's Birthday*"],["2027-09-02","The Day Maldives Embraced Islam*"],["2027-11-03","Victory Day"],["2027-11-11","Republic Day"]],"NP":[["2026-11-08","Laxmi Pooja"],["2026-11-09","Gai Tihar"],["2026-11-10","Gobardhan Pooja"],["2026-11-11","Bhai Tika"],["2026-11-15","Chhath Parva"],["2026-12-25","Christmas Day"],["2026-12-30","Tamu Lhochhar"],["2027-01-11","Prithvi Jayanti"],["2027-01-15","Maghe Sankranti"],["2027-01-29","Martyr's Day"],["2027-02-07","Gyalpo Lhosar"],["2027-02-19","National Democracy Day"],["2027-03-06","Maha Shivaratri"],["2027-03-08","International Women's Day"],["2027-03-10","Eid al-Fitr*"],["2027-03-21","Fagu Poornima"],["2027-03-22","Fagu Poornima (Terai)"],["2027-04-14","Nepali New Year"],["2027-04-15","Ram Navami"],["2027-05-01","International Labor Day"],["2027-05-17","Eid al-Adha*"],["2027-05-20","Buddha Jayanti"],["2027-05-29","Republic Day"],["2027-08-17","Janai Poornima"],["2027-08-25","Shree Krishna Janmashtami"],["2027-09-19","Constitution Day"],["2027-09-30","Ghatasthapana"],["2027-10-06","Fulpati"],["2027-10-07","Maha Ashtami"],["2027-10-08","Maha Navami"],["2027-10-09","Bijaya Dashami"],["2027-10-10","Ekadashi (Dashain)"],["2027-10-11","Duwadashi (Dashain)"],["2027-10-29","Gai Tihar"],["2027-10-30","Gobardhan Pooja"],["2027-10-31","Bhai Tika"],["2027-11-04","Chhath Parva"],["2027-12-25","Christmas Day"],["2027-12-30","Tamu Lhochhar"]],"SA":[["2027-02-22","Founding Day Holiday"],["2027-03-09","Eid al-Fitr Holiday"],["2027-03-10","Eid al-Fitr Holiday"],["2027-03-11","Eid al-Fitr Holiday"],["2027-03-12","Eid al-Fitr Holiday"],["2027-03-14","Eid al-Fitr Holiday (observed)"],["2027-05-15","Day of Arafah"],["2027-05-16","Eid al-Adha Holiday"],["2027-05-17","Eid al-Adha Holiday"],["2027-05-18","Eid al-Adha Holiday"],["2027-05-19","Eid al-Adha Holiday (observed)"],["2027-09-23","National Day Holiday"]],"QA":[["2026-12-18","Qatar National Day"],["2027-02-09","National Sports Day"],["2027-03-09","Eid al-Fitr*"],["2027-03-10","Eid al-Fitr*"],["2027-03-11","Eid al-Fitr*"],["2027-05-16","Eid al-Adha*"],["2027-05-17","Eid al-Adha*"],["2027-05-18","Eid al-Adha*"],["2027-12-18","Qatar National Day"]],"HK":[["2026-12-25","Christmas Day"],["2026-12-26","The first weekday after Christmas Day"],["2027-01-01","New Year's Day"],["2027-02-06","Chinese New Year"],["2027-02-08","The third day of Chinese New Year"],["2027-02-09","The fourth day of Chinese New Year"],["2027-03-29","Easter Monday"],["2027-04-05","Tomb-Sweeping Day"],["2027-05-01","Labor Day"],["2027-05-13","The Buddha's Birthday"],["2027-06-09","Dragon Boat Festival"],["2027-07-01","Hong Kong S.A.R. Establishment Day"],["2027-09-16","The Day following Mid-Autumn Festival"],["2027-10-01","National Day"],["2027-10-08","Double Ninth Festival"],["2027-12-25","Christmas Day"],["2027-12-26","The first weekday after Christmas Day"],["2027-12-27","The first weekday after Christmas Day (observed)"]],"PH":[["2026-11-01","All Saints' Day"],["2026-11-02","All Souls' Day"],["2026-11-30","Bonifacio Day"],["2026-12-08","Immaculate Conception"],["2026-12-24","Christmas Eve"],["2026-12-25","Christmas Day"],["2026-12-30","Rizal Day"],["2026-12-31","New Year's Eve"],["2027-01-01","New Year's Day"],["2027-02-06","Chinese New Year"],["2027-03-09","Eid al-Fitr*"],["2027-03-25","Maundy Thursday"],["2027-03-26","Good Friday"],["2027-03-27","Black Saturday"],["2027-04-09","Day of Valor"],["2027-05-01","Labor Day"],["2027-05-16","Eid al-Adha*"],["2027-06-12","Independence Day"],["2027-08-21","Ninoy Aquino Day"],["2027-08-30","National Heroes Day"],["2027-11-01","All Saints' Day"],["2027-11-02","All Souls' Day"],["2027-11-30","Bonifacio Day"],["2027-12-08","Immaculate Conception"],["2027-12-24","Christmas Eve"],["2027-12-25","Christmas Day"],["2027-12-30","Rizal Day"],["2027-12-31","New Year's Eve"]],"KE":[["2026-12-12","Jamhuri Day"],["2026-12-25","Christmas Day"],["2026-12-26","Boxing Day"],["2027-01-01","New Year's Day"],["2027-03-09","Eid al-Fitr*"],["2027-03-26","Good Friday"],["2027-03-29","Easter Monday"],["2027-05-01","Labor Day"],["2027-06-01","Madaraka Day"],["2027-10-10","Mazingira Day"],["2027-10-11","Mazingira Day (observed)"],["2027-10-20","Mashujaa Day"],["2027-12-12","Jamhuri Day"],["2027-12-13","Jamhuri Day (observed)"],["2027-12-25","Christmas Day"],["2027-12-26","Boxing Day"],["2027-12-27","Boxing Day (observed)"]],"MU":[["2026-11-02","Arrival of Indentured Laborers"],["2026-11-08","Diwali"],["2026-12-25","Christmas Day"],["2027-01-01","New Year's Day"],["2027-01-02","Day after New Year's Day"],["2027-01-22","Thaipusam"],["2027-02-01","Abolition of Slavery"],["2027-02-06","Chinese Spring Festival"],["2027-03-06","Maha Shivaratri"],["2027-03-10","Eid al-Fitr*"],["2027-03-12","Independence and Republic Day"],["2027-04-07","Ugadi"],["2027-05-01","Labor Day"],["2027-09-04","Ganesh Chaturthi"],["2027-10-29","Diwali"],["2027-11-01","All Saints' Day"],["2027-11-02","Arrival of Indentured Laborers"],["2027-12-25","Christmas Day"]],"RU":[["2026-11-04","Unity Day"],["2026-12-31","Day off (substituted from 01/04/2026)"],["2027-01-01","New Year Holidays"],["2027-01-02","New Year Holidays"],["2027-01-03","New Year Holidays"],["2027-01-04","New Year Holidays"],["2027-01-05","New Year Holidays"],["2027-01-06","New Year Holidays"],["2027-01-07","Christmas Day"],["2027-01-08","New Year Holidays"],["2027-02-22","Day off (substituted from 02/20/2027)"],["2027-02-23","Defender of the Fatherland Day"],["2027-03-08","International Women's Day"],["2027-05-01","Holiday of Spring and Labor"],["2027-05-03","Holiday of Spring and Labor (observed)"],["2027-05-09","Victory Day"],["2027-05-10","Victory Day (observed)"],["2027-06-12","Russia Day"],["2027-06-14","Russia Day (observed)"],["2027-11-04","Unity Day"],["2027-11-05","Day off (substituted from 01/02/2027)"],["2027-12-31","Day off (substituted from 01/03/2027)"]],"GE":[["2026-11-23","Saint George's Day"],["2027-01-01","New Year's Day"],["2027-01-02","New Year's Day"],["2027-01-07","Christmas Day"],["2027-01-19","Epiphany"],["2027-03-03","Mother's Day"],["2027-03-08","International Women's Day"],["2027-04-09","National Unity Day"],["2027-04-30","Good Friday"],["2027-05-01","Holy Saturday"],["2027-05-02","Easter Sunday"],["2027-05-03","Easter Monday"],["2027-05-09","Day of Victory over Fascism"],["2027-05-12","Saint Andrew's Day"],["2027-05-17","Day of Family Sanctity and Respect for Parents"],["2027-05-26","Independence Day"],["2027-08-28","Dormition of the Mother of God"],["2027-10-14","Holiday of Svetitskhovloba, Robe of Jesus"],["2027-11-23","Saint George's Day"]],"AZ":[["2026-11-08","Victory Day"],["2026-11-09","National Flag Day"],["2026-11-10","Victory Day (observed)"],["2026-12-31","International Azerbaijanis Solidarity Day"],["2027-01-01","New Year's Day"],["2027-01-02","New Year's Day"],["2027-01-04","New Year's Day (observed)"],["2027-01-20","Martyrs' Day"],["2027-03-08","Women's Day"],["2027-03-09","Eid al-Fitr*"],["2027-03-10","Eid al-Fitr*"],["2027-03-20","Spring Festival"],["2027-03-21","Spring Festival"],["2027-03-22","Spring Festival"],["2027-03-23","Spring Festival"],["2027-03-24","Spring Festival"],["2027-03-25","Spring Festival (observed)"],["2027-03-26","Spring Festival (observed)"],["2027-05-09","Victory over Fascism Day"],["2027-05-10","Victory over Fascism Day (observed)"],["2027-05-16","Eid al-Adha*"],["2027-05-17","Eid al-Adha*"],["2027-05-18","Eid al-Adha (observed, estimated)"],["2027-05-28","Independence Day"],["2027-06-15","National Liberation Day"],["2027-06-26","Armed Forces Day"],["2027-06-28","Armed Forces Day (observed)"],["2027-11-08","Victory Day"],["2027-11-09","National Flag Day"],["2027-12-31","International Azerbaijanis Solidarity Day"]],"KZ":[["2026-12-16","Independence Day"],["2027-01-01","New Year's Day"],["2027-01-02","New Year's Day"],["2027-01-04","New Year's Day (observed)"],["2027-01-07","Orthodox Christmas"],["2027-03-08","International Women's Day"],["2027-03-15","Constitution Day"],["2027-03-21","Nowruz Holiday"],["2027-03-22","Nowruz Holiday"],["2027-03-23","Nowruz Holiday"],["2027-03-24","Nowruz Holiday (observed)"],["2027-05-01","Kazakhstan's People Solidarity Holiday"],["2027-05-03","Kazakhstan's People Solidarity Holiday (observed"],["2027-05-07","Defender of the Fatherland Day"],["2027-05-09","Victory Day"],["2027-05-10","Victory Day (observed)"],["2027-05-16","Eid al-Adha*"],["2027-07-06","Capital Day"],["2027-10-25","Republic Day"],["2027-12-16","Independence Day"]],"AR":[["2026-11-09","Visit of His Holiness Pope Leo XIV"],["2026-11-23","National Sovereignty Day"],["2026-12-07","Bridge Public Holiday"],["2026-12-08","Immaculate Conception"],["2026-12-25","Christmas Day"],["2027-01-01","New Year's Day"],["2027-02-08","Carnival Monday"],["2027-02-09","Carnival Tuesday"],["2027-03-24","National Day of Remembrance for Truth and Justic"],["2027-03-25","Maundy Thursday"],["2027-03-26","Good Friday"],["2027-04-02","Veteran's Day and the Fallen in the Malvinas War"],["2027-05-01","Labor Day"],["2027-05-25","May Revolution Day"],["2027-06-20","Pass to the Immortality of General Don Manuel Be"],["2027-06-21","Pass to the Immortality of General Don Martín Mi"],["2027-07-09","Independence Day"],["2027-08-16","Pass to the Immortality of General Don José de S"],["2027-10-11","Respect for Cultural Diversity Day"],["2027-11-20","National Sovereignty Day"],["2027-12-08","Immaculate Conception"],["2027-12-25","Christmas Day"]],"BD":[["2026-12-16","Victory Day"],["2026-12-25","Christmas Day"],["2027-01-24","Mid-Sha'ban*"],["2027-02-21","Martyrs' Day and International Mother Language D"],["2027-03-05","Jumu'atul-Wida*"],["2027-03-07","Laylat al-Qadr*"],["2027-03-10","Eid al-Fitr*"],["2027-03-11","Eid al-Fitr*"],["2027-03-12","Eid al-Fitr*"],["2027-03-26","Independence Day"],["2027-04-14","Bengali New Year's Day"],["2027-05-01","May Day"],["2027-05-17","Eid al-Adha*"],["2027-05-18","Eid al-Adha*"],["2027-05-19","Eid al-Adha*"],["2027-06-16","Ashura*"],["2027-08-05","July Mass Uprising Day"],["2027-08-15","Prophet's Birthday*"],["2027-12-16","Victory Day"],["2027-12-25","Christmas Day"]],"CZ":[["2026-11-17","Struggle for Freedom and Democracy Day and Inter"],["2026-12-24","Christmas Eve"],["2026-12-25","Christmas Day"],["2026-12-26","Second Day of Christmas"],["2027-01-01","Independent Czech State Restoration Day"],["2027-03-26","Good Friday"],["2027-03-29","Easter Monday"],["2027-05-01","Labor Day"],["2027-05-08","Victory Day"],["2027-07-05","Saints Cyril and Methodius Day"],["2027-07-06","Jan Hus Day"],["2027-09-28","Statehood Day"],["2027-10-28","Independent Czechoslovak State Day"],["2027-11-17","Struggle for Freedom and Democracy Day and Inter"],["2027-12-24","Christmas Eve"],["2027-12-25","Christmas Day"],["2027-12-26","Second Day of Christmas"]],"SC":[["2026-11-01","All Saints' Day"],["2026-11-02","All Saints' Day (observed)"],["2026-12-08","Immaculate Conception"],["2026-12-25","Christmas Day"],["2027-01-01","New Year's Day"],["2027-01-02","New Year Holiday"],["2027-03-26","Good Friday"],["2027-03-27","Easter Saturday"],["2027-03-29","Easter Monday"],["2027-05-01","Labor Day"],["2027-05-27","Corpus Christi"],["2027-06-18","Constitution Day"],["2027-06-29","Independence (National) Day"],["2027-08-15","Assumption Day"],["2027-08-16","Assumption Day (observed)"],["2027-11-01","All Saints' Day"],["2027-12-08","Immaculate Conception"],["2027-12-25","Christmas Day"]],"KH":[["2026-11-09","National Independence Day"],["2026-11-23","Water Festival"],["2026-11-24","Water Festival"],["2026-11-25","Water Festival"],["2026-12-29","Peace Day in Cambodia"],["2027-01-01","International New Year Day"],["2027-01-07","Day of Victory over the Genocidal Regime"],["2027-03-08","International Women's Rights Day"],["2027-04-14","Khmer New Year's Day"],["2027-04-15","Khmer New Year's Day"],["2027-04-16","Khmer New Year's Day"],["2027-05-01","International Labor Day"],["2027-05-14","HM King Norodom Sihamoni's Birthday"],["2027-05-20","Visaka Bochea Day"],["2027-05-24","Royal Ploughing Ceremony"],["2027-06-18","HM Queen Norodom Monineath Sihanouk the Queen-Mo"],["2027-09-24","Constitution Day"],["2027-09-29","Pchum Ben Day"],["2027-09-30","Pchum Ben Day"],["2027-10-01","Pchum Ben Day"],["2027-10-15","HM King Norodom Sihanouk Mourning Day"],["2027-10-29","HM King Norodom Sihamoni's Coronation Day"],["2027-11-09","National Independence Day"],["2027-11-12","Water Festival"],["2027-11-13","Water Festival"],["2027-11-14","Water Festival"],["2027-12-29","Peace Day in Cambodia"]]};
+const CITIES = CITY_RAW.map(r=>{const via=r[5].startsWith("via:")?r[5].split(":"):null;return{id:r[0],city:r[1],cc:r[2],lat:r[3],lon:r[4],via:via?via[1]:null,viaH:via?+via[2]:0,iata:via?null:r[5],intl:!!r[6],hotel:r[7],daily:r[8],peak:r[9].split(",").map(Number),shoulder:r[10].split(",").map(Number),areas:r[11].split("|"),sights:r[12].split("|"),eat:r[13].trim()}});
+const CITY = Object.fromEntries(CITIES.map(c=>[c.id,c]));
+const BY_CC = {};CITIES.forEach(c=>(BY_CC[c.cc]=BY_CC[c.cc]||[]).push(c));
+const SNAME = {RES:"Maldives",DPS:"Bali",HLB:"Ha Long",NAP:"Amalfi Coast",HKN:"Hakone"};
+const sname = c=>SNAME[c.id]||c.city.split(" (")[0].split(" /")[0];
+const HOL_COLORS = ["#D9822B","#0E7C86","#7B5EA7","#C0392B","#2E86C1","#1D8048","#B9740B","#A04E8B"];
+const WEEKEND = {AE:[0,6],SA:[5,6],QA:[5,6],EG:[5,6],NP:[6],BD:[5,6]};
+const FLIGHT_PROV = [
+ {id:"sky",name:"Skyscanner",mk:"SS",col:"#0770E3",f:.985,fee:0,kind:"Meta-search, compares 1,000+ sellers"},
+ {id:"gfl",name:"Google Flights",mk:"GF",col:"#1A73E8",f:.99,fee:0,kind:"Meta-search with price tracking"},
+ {id:"mmt",name:"MakeMyTrip",mk:"MMT",col:"#E73C33",f:1.0,fee:350,kind:"OTA, bank offers & EMI"},
+ {id:"gib",name:"Goibibo",mk:"GI",col:"#F26722",f:.995,fee:300,kind:"OTA, goCash rewards"},
+ {id:"ctp",name:"Cleartrip",mk:"CT",col:"#F77728",f:.99,fee:250,kind:"OTA, free cancellation add-on"},
+ {id:"emt",name:"EaseMyTrip",mk:"EMT",col:"#2196F3",f:1.004,fee:0,kind:"OTA, no convenience fee"},
+ {id:"ixi",name:"ixigo",mk:"IX",col:"#FC790D",f:.997,fee:150,kind:"OTA with fare alerts"},
+ {id:"ago",name:"Agoda Flights",mk:"AG",col:"#5C2D91",f:1.012,fee:0,kind:"Flight + hotel bundles"}
+];
+const HOTEL_PROV = [
+ {id:"ago",name:"Agoda",mk:"AG",col:"#5C2D91",f:.965,kind:"Strong in Asia, member deals"},
+ {id:"bkg",name:"Booking.com",mk:"B.",col:"#003B95",f:1.0,kind:"Widest inventory, free cancellation"},
+ {id:"mmt",name:"MakeMyTrip",mk:"MMT",col:"#E73C33",f:.985,kind:"Bank offers, MMTBLACK"},
+ {id:"gib",name:"Goibibo",mk:"GI",col:"#F26722",f:.98,kind:"goCash, couple-friendly filters"},
+ {id:"ctp",name:"Cleartrip",mk:"CT",col:"#F77728",f:.995,kind:"Simple checkout"},
+ {id:"ghl",name:"Google Hotels",mk:"GH",col:"#1A73E8",f:.975,kind:"Compares hotel sites"},
+ {id:"abb",name:"Airbnb",mk:"AB",col:"#E0484E",f:.9,kind:"Homes, not hotels; compare like for like"}
+];
+const TIERS = [{k:"budget",n:"Budget",s:2,m:.45},{k:"mid",n:"Mid-range",s:3,m:1},{k:"upscale",n:"Upscale",s:4,m:1.85},{k:"luxury",n:"Luxury",s:5,m:3.5}];
+const FOOD_STYLES = [{k:"street",n:"Street food",f:m=>m[0]*3},{k:"mixed",n:"Mixed",f:m=>m[0]+m[1]*2},{k:"rest",n:"Restaurants",f:m=>m[0]+m[1]+m[2]}];
+const DEFAULT_ROUTES = {TH:[["HKT",3],["KBV",2],["PYX",3]],VN:[["HAN",2],["HLB",1],["HOI",3],["SGN",2]],ID:[["DPS",3],["UBD",3]],MY:[["KUL",3],["LGK",3]],AE:[["DXB",4],["AUH",2]],JP:[["NRT",4],["HKN",1],["KYO",3],["KIX",2]],KR:[["ICN",4],["PUS",2]],LK:[["CMB",1],["SGR",2],["KDY",2],["ELL",2],["GAL",2]],MV:[["MLE",1],["RES",4]],NP:[["KTM",3],["PKR",3]],BT:[["PBH",2],["THI",2],["PUN",1]],TR:[["IST",3],["NAV",2],["AYT",3]],GE:[["TBS",3],["KAZ",1],["BUS",2]],GB:[["LHR",4],["EDI",3]],FR:[["CDG",4],["NCE",3]],IT:[["FCO",3],["FLR",2],["VCE",2]],ES:[["BCN",3],["MAD",2],["SVQ",2]],CH:[["ZRH",2],["LUZ",2],["INT",3]],GR:[["ATH",2],["JTR",3],["JMK",2]],US:[["JFK",4],["LAS",2],["LAX",3]],CA:[["YYZ",3],["NIA",1],["YVR",3]],AU:[["SYD",4],["MEL",3]],NZ:[["AKL",2],["ROT",2],["ZQN",4]],ZA:[["CPT",4],["JNB",2]],KE:[["NBO",2],["MRA",3]],EG:[["CAI",3],["LXR",2],["ASW",2]],PH:[["MNL",2],["CEB",2],["MPH",3]],IN:[["DEL",2],["AGR",1],["JAI",2],["UDR",2]],DE:[["FRA",2],["MUC",3],["BER",3]],AT:[["VIE",3],["SZG",2]],PT:[["LIS",3],["OPO",2]]};
+
+/* ---------------- Utilities ---------------- */
+const $ = s=>document.querySelector(s);
+const esc = s=>String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const TODAY = (()=>{const d=new Date();d.setHours(0,0,0,0);return d})();
+const iso = d=>`${d.getFullYear()}-${d2(d.getMonth()+1)}-${d2(d.getDate())}`;
+const parse = s=>{const [y,m,d]=s.split("-").map(Number);return new Date(y,m-1,d)};
+const addD = (d,n)=>{const x=new Date(d);x.setDate(x.getDate()+n);return x};
+const diffD = (a,b)=>Math.round((b-a)/864e5);
+function d2(n){return String(n).padStart(2,"0")}
+const MON = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+const DOW = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
+const fmtD = d=>`${d.getDate()} ${MON[d.getMonth()]}`;
+const fmtDY = d=>`${d.getDate()} ${MON[d.getMonth()]} ${d.getFullYear()}`;
+function hash(s){let h=2166136261;for(const ch of s){h^=ch.charCodeAt(0);h=Math.imul(h,16777619)}return (h>>>0)/4294967295}
+function money(inr,cur=S.cur){const v=inr/FX[cur];const r=cur==="INR"?Math.round(v/10)*10:Math.round(v);return CUR_SYM[cur]+r.toLocaleString(cur==="INR"?"en-IN":"en-US")}
+function shortMoney(inr){const v=inr/FX[S.cur];if(S.cur==="INR"){if(v>=1e5)return "₹"+(v/1e5).toFixed(v>=1e6?0:1)+"L";if(v>=1e3)return "₹"+(v/1e3).toFixed(1)+"k";return "₹"+Math.round(v)}return CUR_SYM[S.cur]+(v>=1e3?(v/1e3).toFixed(1)+"k":Math.round(v))}
+function fmtHrs(h){if(h<1)return Math.max(15,Math.round(h*60/5)*5)+" min";const H=Math.floor(h),M=Math.round((h-H)*60/5)*5;return M>=60?`${H+1}h`:M?`${H}h ${d2(M)}m`:`${H}h`}
+function toast(t){const el=$("#toast");el.textContent=t;el.hidden=false;clearTimeout(toast._t);toast._t=setTimeout(()=>el.hidden=true,2200)}
+async function copy(text,ta){try{await navigator.clipboard.writeText(text);toast("Copied")}catch(e){if(ta){ta.focus();ta.select()}toast("Press Ctrl/Cmd+C to copy the selected text")}}
+const store={get(k,d){try{const v=localStorage.getItem("lc:"+k);return v?JSON.parse(v):d}catch(e){return d}},set(k,v){try{localStorage.setItem("lc:"+k,JSON.stringify(v))}catch(e){}},del(k){try{localStorage.removeItem("lc:"+k)}catch(e){}}};
+const ccName = c=>COUNTRY[c]||c;
+
+/* ---------------- State ---------------- */
+const defStops = cc=>(DEFAULT_ROUTES[cc]||BY_CC[cc].slice(0,2).map((c,i)=>[c.id,i?2:3])).map(([id,n])=>({id,n,tier:"upscale"}));
+const DEF = {from:"DEL",cc:"TH",stops:defStops("TH"),dep:iso(addD(TODAY,43)),trip:"round",adults:2,rooms:1,cur:"INR",food:"mixed",holSel:null,holMonth:null};
+const S = Object.assign({},DEF,store.get("trip",{}));
+if(!CITY[S.from])S.from=DEF.from;
+S.stops=(S.stops||[]).filter(s=>CITY[s.id]);if(!S.stops.length){S.cc=DEF.cc;S.stops=defStops(S.cc)}
+if(!BY_CC[S.cc])S.cc=CITY[S.stops[0].id].cc;
+if(parse(S.dep)<=TODAY)S.dep=DEF.dep;
+const save=()=>store.set("trip",S);
+const ORIGIN=()=>CITY[S.from];
+
+/* ---------------- Geography & routing ---------------- */
+function km(a,b){const R=6371,t=Math.PI/180;const dl=(b.lat-a.lat)*t,dn=(b.lon-a.lon)*t;const x=Math.sin(dl/2)**2+Math.cos(a.lat*t)*Math.cos(b.lat*t)*Math.sin(dn/2)**2;return 2*R*Math.asin(Math.sqrt(x))}
+const apt = c=>c.via?CITY[c.via]:c;
+function gateway(p){if(p.intl)return p;if(HUB_FIX[p.id])return CITY[HUB_FIX[p.id]];const L=(BY_CC[p.cc]||[]).filter(c=>c.intl&&!c.via);return L.sort((a,b)=>km(p,a)-km(p,b))[0]||p}
+function groundToAirport(c,date,rev){const p=apt(c);const h=c.viaH;const k=XFER[c.id+"-"+p.id]||XFER[p.id+"-"+c.id];
+  const seg={type:"ground",a:rev?p:c,b:rev?c:p,date,mode:k?k[0]:(h<1.2?"Taxi or shuttle":"Private car or shuttle"),hours:k?k[1]:h,usd:k?k[2]:Math.round(6+h*7),note:k&&k[3]?k[3]:`${sname(c)} has no airport of its own; ${p.city} (${p.iata}) is the nearest.`};return seg}
+function flightSeg(a,b,date){return{type:"flight",a,b,date,intl:a.cc!==b.cc,hours:km(a,b)/780+.6}}
+function planTravel(A,B,date){
+  if(A.id===B.id)return[];
+  const k=XFER[A.id+"-"+B.id]||XFER[B.id+"-"+A.id];
+  if(k){const air=/^Flight/.test(k[0])&&!/\+/.test(k[0])&&A.iata&&B.iata;return[{type:"ground",a:A,b:B,date,mode:k[0],hours:k[1],usd:k[2],note:k[3],air}]}
+  const segs=[];
+  if(A.cc===B.cc){const pa=apt(A),pb=apt(B),d=km(A,B),rail=RAIL[A.cc];
+    if(pa.id===pb.id||d<=300){if(rail&&d>60)return[{type:"ground",a:A,b:B,date,mode:"Train",hours:d/(A.cc==="IN"?55:130)+.3,usd:Math.max(6,rail*d),note:""}];
+      return[{type:"ground",a:A,b:B,date,mode:d<90?"Taxi or private car":"Private car or bus",hours:d/55+.3,usd:d<90?12:Math.round(.05*d+8),note:""}]}
+    if(rail&&d<=650&&A.cc!=="IN")return[{type:"ground",a:A,b:B,date,mode:"Train",hours:d/190+.5,usd:rail*d,note:""}];
+    if(A.via)segs.push(groundToAirport(A,date,false));segs.push(flightSeg(pa,pb,date));if(B.via)segs.push(groundToAirport(B,date,true));return segs}
+  const pa=apt(A),pb=apt(B),ga=gateway(pa),gb=gateway(pb);
+  if(A.via)segs.push(groundToAirport(A,date,false));
+  if(ga.id!==pa.id)segs.push(flightSeg(pa,ga,date));
+  segs.push(flightSeg(ga,gb,date));
+  if(gb.id!==pb.id)segs.push(flightSeg(gb,pb,date));
+  if(B.via)segs.push(groundToAirport(B,date,true));
+  return segs}
+function journey(depStr=S.dep){const dep=parse(depStr);let cur=dep;const stops=S.stops.map(s=>{const c=CITY[s.id];const st={...s,c,in:cur,out:addD(cur,s.n)};cur=st.out;return st});
+  const ret=cur;const legs=[];const O=ORIGIN();
+  legs.push({kind:"out",from:O,to:stops[0].c,date:dep,segs:planTravel(O,stops[0].c,dep)});
+  for(let i=0;i<stops.length-1;i++)legs.push({kind:"xfer",from:stops[i].c,to:stops[i+1].c,date:stops[i].out,segs:planTravel(stops[i].c,stops[i+1].c,stops[i].out)});
+  if(S.trip==="round")legs.push({kind:"ret",from:stops[stops.length-1].c,to:O,date:ret,segs:planTravel(stops[stops.length-1].c,O,ret)});
+  return{dep,ret,stops,legs,nights:diffD(dep,ret)}}
+const allSegs = J=>J.legs.flatMap(l=>l.segs.map(s=>({...s,leg:l})));
+
+/* ---------------- Price models ---------------- */
+function season(city,month){const m=month+1;if(city.peak.includes(m))return{k:"peak",f:1.24,label:"Peak season"};if(city.shoulder.includes(m))return{k:"shoulder",f:1.06,label:"Shoulder season"};return{k:"off",f:.9,label:"Off-season"}}
+function holidaysNear(cc,d,before,after){const L=HOL[cc]||[];const a=iso(addD(d,-before)),b=iso(addD(d,after));return L.filter(h=>h[0]>=a&&h[0]<=b)}
+function leadF(days,dom){if(days<3)return 1.7;if(days<7)return 1.48;if(days<14)return 1.27;if(days<21)return 1.13;
+  const lo=dom?[21,50]:[35,85];if(days<=lo[1]&&days>=lo[0])return .93;if(days<lo[0])return 1.13-(days-21)/(lo[0]-21||1)*.2;if(days<=150)return .93+(days-lo[1])/(150-lo[1])*.08;return 1.02}
+function oneWayBase(o,d){const k=km(o,d);if(o.cc===d.cc){if(o.cc==="IN")return 1700+4.3*k;return(38+.095*k)*FX.USD*(DOM_PRICE[o.cc]||1)}return(55+.074*k+(k>6500?90:0)+(k>10000?120:0))*FX.USD}
+function fare(o,d,date,bookOn=TODAY){const base=oneWayBase(o,d);const s=season(d,date.getMonth()).f;const dow=[1.04,.97,.94,.95,1.03,1.08,1.0][date.getDay()];
+  const hol=(holidaysNear(o.cc,date,2,3).length?1.1:1)*(holidaysNear(d.cc,date,1,2).length?1.05:1);const lead=leadF(Math.max(0,diffD(bookOn,date)),o.cc===d.cc);const n=.94+hash(o.id+d.id+iso(date))*.12;return base*s*dow*hol*lead*n}
+function segQuotes(seg,bookOn=TODAY){const base=fare(seg.a,seg.b,seg.date,bookOn);return FLIGHT_PROV.map(p=>{const per=base*p.f*(.985+hash(p.id+seg.a.id+seg.b.id+iso(seg.date))*.03)+p.fee;return{...p,per,total:per*S.adults}}).sort((x,y)=>x.total-y.total)}
+const segBest = (seg,bookOn)=>segQuotes(seg,bookOn)[0];
+const groundCost = seg=>seg.usd*FX.USD*S.adults;
+function flightsTotal(J,bookOn=TODAY){return allSegs(J).filter(s=>s.type==="flight").reduce((a,s)=>a+segBest(s,bookOn).total,0)}
+function hotelNight(tierM,city,inD,n){let tot=0;for(let i=0;i<n;i++){const d=addD(inD,i);const s=season(city,d.getMonth()).f;const we=(d.getDay()===5||d.getDay()===6)?1.08:1;const hol=holidaysNear(city.cc,d,0,0).length?1.12:1;tot+=city.hotel*FX.USD*tierM*s*we*hol*(.95+hash(city.id+iso(d))*.1)}return tot/n}
+function hotelQuotes(st,tierK=st.tier){const T=TIERS.find(t=>t.k===tierK);const n=hotelNight(T.m,st.c,st.in,st.n);return HOTEL_PROV.map(p=>{const night=n*p.f*(.98+hash(p.id+st.c.id+iso(st.in)+tierK)*.05);return{...p,night,total:night*st.n*S.rooms}}).sort((a,b)=>a.total-b.total)}
+const hotelBest = st=>hotelQuotes(st).find(h=>h.id!=="abb");
+const foodInfo = cc=>FOOD[cc]||["Local specialities","Check menus locally.","Varies by city.",[5,12,40]];
+const foodDay = cc=>{const st=FOOD_STYLES.find(f=>f.k===S.food)||FOOD_STYLES[1];return st.f(foodInfo(cc)[3])*FX.USD};
+function destCountries(J){return[...new Set(J.stops.map(s=>s.c.cc))].filter(c=>c!==ORIGIN().cc)}
+function visaOf(cc){return VISA[cc]||["Check requirements",0,10,"—","No entry in our table for this country yet.",""]}
+function costs(J=journey()){const segs=allSegs(J);const fl=segs.filter(s=>s.type==="flight").reduce((a,s)=>a+segBest(s).total,0);const gr=segs.filter(s=>s.type==="ground").reduce((a,s)=>a+groundCost(s),0);
+  const hotel=J.stops.reduce((a,st)=>a+hotelBest(st).total,0);
+  const days=J.stops.map((st,i)=>st.n+(i===J.stops.length-1?1:0));
+  const food=J.stops.reduce((a,st,i)=>a+foodDay(st.c.cc)*days[i]*S.adults,0);
+  const sights=J.stops.reduce((a,st,i)=>a+st.c.daily*FX.USD*days[i]*S.adults,0);
+  const visa=destCountries(J).reduce((a,c)=>a+visaOf(c)[1]*S.adults,0);
+  const abroad=destCountries(J).length>0;const ins=abroad?180*(J.nights+1)*S.adults:0;
+  const items=[{k:"Flights",v:fl,c:"var(--accent)"},{k:"Transfers between cities",v:gr,c:"#B9740B"},{k:"Hotels",v:hotel,c:"var(--teal)"},{k:"Food & drink",v:food,c:"#C0392B"},{k:"Sights & local transport",v:sights,c:"#2E86C1"},{k:"Visa",v:visa,c:"#7B5EA7"},{k:"Travel insurance",v:ins,c:"#8C9AAB"}];
+  return{items,total:items.reduce((a,b)=>a+b.v,0)}}
+function bookingCurve(J){const out=[];const first=J.dep;for(let k=0;k<=12;k++){const b=addD(TODAY,k*7);if(diffD(b,first)<1)break;out.push({k,date:b,p:flightsTotal(J,b)})}return out}
+function mainPair(J){const segs=allSegs(J).filter(s=>s.type==="flight"&&s.leg.kind==="out");const m=segs.sort((a,b)=>km(b.a,b.b)-km(a.a,a.b))[0];return m?[m.a,m.b]:null}
+function verdict(J){const daysOut=diffD(TODAY,J.dep);const curve=bookingCurve(J);const sig=[];let score=70;let now=0,min=0,minAt={k:0,date:TODAY};
+  if(curve.length&&curve[0].p>0){now=curve[0].p;min=Math.min(...curve.map(c=>c.p));minAt=curve.find(c=>c.p===min);
+    if(now<=min*1.03){sig.push({s:"good",t:"Fare timing: book flights now",d:`Today's estimate is within 3% of the lowest expected before departure (${daysOut} days out).`});score+=12}
+    else{sig.push({s:"warn",t:`Fare timing: wait about ${minAt.k} week${minAt.k>1?"s":""}`,d:`Flights are expected to drop about ${Math.round((now/min-1)*100)}% around ${fmtD(minAt.date)}. Set price alerts.`});score-=6}
+    const last=curve[curve.length-1];if(curve.length>3&&last.p>now*1.15){sig.push({s:"bad",t:"Prices climb sharply closer to the date",d:"Last-minute fares on these routes rise more than 15%."});score-=4}}
+  const main=J.stops.slice().sort((a,b)=>b.n-a.n)[0];const se=season(main.c,main.in.getMonth());
+  sig.push({s:se.k==="peak"?"warn":"good",t:`${se.label} in ${sname(main.c)}`,d:se.k==="peak"?"Best weather and the biggest crowds; hotels run about 25% above average.":se.k==="shoulder"?"Decent weather, fewer crowds, fairer prices.":"Lower prices; check the weather (monsoon, heat or cold) first."});score+=se.k==="peak"?-5:4;
+  const dh=J.stops.flatMap(st=>holidaysNear(st.c.cc,st.in,0,st.n).map(h=>({h,st})));const seen=new Set();const dhu=dh.filter(x=>{const k=x.h[0]+x.h[1];if(seen.has(k))return false;seen.add(k);return true});
+  if(dhu.length){sig.push({s:"warn",t:`${dhu.length} public holiday${dhu.length>1?"s":""} during your stay`,d:dhu.slice(0,3).map(x=>`${x.h[1]} in ${ccName(x.st.c.cc)} (${fmtD(parse(x.h[0]))})`).join(", ")+". Expect busier sights and some closures."});score-=4}
+  const oh=holidaysNear(ORIGIN().cc,J.dep,3,3);if(oh.length){sig.push({s:"warn",t:"Departure sits next to a home holiday",d:oh.map(h=>`${h[1]} (${fmtD(parse(h[0]))})`).join(", ")+". Outbound demand is higher."});score-=4}
+  const xf=J.legs.filter(l=>l.kind==="xfer");const longX=xf.filter(l=>l.segs.reduce((a,s)=>a+s.hours,0)>6);if(longX.length){sig.push({s:"warn",t:`${longX.length} long transfer day${longX.length>1?"s":""}`,d:longX.map(l=>`${sname(l.from)} → ${sname(l.to)}`).join(", ")+" takes more than 6 hours. Keep that day light."});score-=3}
+  const short=J.stops.filter(s=>s.n<2&&J.stops.length>1);if(short.length){sig.push({s:"warn",t:"Very short stop",d:short.map(s=>sname(s.c)).join(", ")+" has only one night. Consider adding a night."});score-=2}
+  destCountries(J).forEach(cc=>{const v=visaOf(cc);if(v[2]>0){const slack=daysOut-v[2];if(slack<7){sig.push({s:"bad",t:`Visa risk for ${ccName(cc)}: ${v[0]} takes about ${v[2]} days`,d:`You leave in ${daysOut} days. Apply today or move your dates.`});score-=18}else if(slack<21){sig.push({s:"warn",t:`${ccName(cc)} visa: apply within ${slack-7} days`,d:`${v[0]} takes about ${v[2]} days.`});score-=4}else sig.push({s:"good",t:`${ccName(cc)}: ${v[0]}, plenty of time`,d:`About ${v[2]} days to process; you leave in ${daysOut}.`})}else sig.push({s:"good",t:`${ccName(cc)}: ${v[0]}`,d:v[4]||"Nothing to apply for in advance."})});
+  score=Math.max(5,Math.min(98,Math.round(score)));const head=score>=78?"Good time to book":score>=60?"Book soon, watch prices":score>=45?"Proceed with care":"Rethink the dates";
+  return{score,head,sig,now,min,minAt}}
+
+/* ---------------- Links ---------------- */
+function dmy(d){return`${d2(d.getDate())}/${d2(d.getMonth()+1)}/${d.getFullYear()}`}
+function flightLinkOW(id,o,d,date){const n=S.adults,ds=iso(date),intl=o.cc!=="IN"||d.cc!=="IN";
+  switch(id){
+  case"sky":return`https://www.skyscanner.co.in/transport/flights/${o.toLowerCase?o.toLowerCase():o}/${d.toLowerCase()}/${ds.slice(2).replace(/-/g,"")}/?adultsv2=${n}&cabinclass=economy`;
+  case"gfl":return`https://www.google.com/travel/flights?q=${encodeURIComponent(`One way flights from ${o} to ${d} on ${ds} for ${n} adults`)}`;
+  case"mmt":return`https://www.makemytrip.com/flight/search?itinerary=${o}-${d}-${dmy(date)}&tripType=O&paxType=A-${n}_C-0_I-0&intl=${intl}&cabinClass=E`;
+  case"gib":return`https://www.goibibo.com/flights/air-${o}-${d}-${ds.replace(/-/g,"")}--${n}-0-0-E-${intl?"I":"D"}/`;
+  case"ctp":return`https://www.cleartrip.com/flights/results?adults=${n}&childs=0&infants=0&class=Economy&depart_date=${dmy(date)}&from=${o}&to=${d}&intl=${intl?"y":"n"}`;
+  case"ixi":return`https://www.ixigo.com/search/result/flight?from=${o}&to=${d}&date=${dmy(date).replace(/\//g,"")}&adults=${n}&children=0&infants=0&class=e`;
+  case"emt":return"https://www.easemytrip.com/flights.html";
+  case"ago":return"https://www.agoda.com/flights";}}
+const fLink=(id,seg)=>flightLinkOW(id,seg.a.iata,seg.b.iata,seg.date);
+const PREFILL_F=new Set(["sky","gfl","mmt","gib","ctp","ixi"]),PREFILL_H=new Set(["ago","bkg","mmt","ctp","abb"]);
+function multiCityLinks(J){const f=allSegs(J).filter(s=>s.type==="flight");if(f.length<2)return null;const n=S.adults;const intl=f.some(s=>s.a.cc!=="IN"||s.b.cc!=="IN");
+  const mmt=`https://www.makemytrip.com/flight/search?itinerary=${f.map(s=>`${s.a.iata}-${s.b.iata}-${dmy(s.date)}`).join("_")}&tripType=M&paxType=A-${n}_C-0_I-0&intl=${intl}&cabinClass=E`;
+  const g=`https://www.google.com/travel/flights?q=${encodeURIComponent("Multi-city flights "+f.map(s=>`${s.a.iata} to ${s.b.iata} on ${iso(s.date)}`).join(", ")+` for ${n} adults`)}`;return{mmt,g,f}}
+function hotelLink(id,st){const c=sname(st.c),a=st.in,b=st.out,ad=Math.max(1,Math.round(S.adults/S.rooms));const mdy=d=>`${d2(d.getMonth()+1)}${d2(d.getDate())}${d.getFullYear()}`;const q=encodeURIComponent(c);
+  switch(id){
+  case"ago":return`https://www.agoda.com/search?textToSearch=${q}&checkIn=${iso(a)}&checkOut=${iso(b)}&rooms=${S.rooms}&adults=${S.adults}`;
+  case"bkg":return`https://www.booking.com/searchresults.html?ss=${q}&checkin=${iso(a)}&checkout=${iso(b)}&group_adults=${S.adults}&no_rooms=${S.rooms}`;
+  case"mmt":return`https://www.makemytrip.com/hotels/hotel-listing/?checkin=${mdy(a)}&checkout=${mdy(b)}&searchText=${q}&roomStayQualifier=${ad}e0e`;
+  case"gib":return"https://www.goibibo.com/hotels/";
+  case"ctp":return`https://www.cleartrip.com/hotels/results?city=${q}&chk_in=${dmy(a)}&chk_out=${dmy(b)}&adults1=${ad}&num_rooms=${S.rooms}`;
+  case"ghl":return`https://www.google.com/travel/hotels?q=${encodeURIComponent("hotels in "+c)}`;
+  case"abb":return`https://www.airbnb.co.in/s/${q}/homes?checkin=${iso(a)}&checkout=${iso(b)}&adults=${S.adults}`;}}
+const slug=s=>encodeURIComponent(s.replace(/[^\p{L}\p{N} -]/gu,"").trim().replace(/ +/g,"-"));
+function groundLinks(seg){const L=[[`Compare routes on Rome2rio`,`https://www.rome2rio.com/map/${slug(sname(seg.a))}/${slug(sname(seg.b))}`]];const cc=seg.a.cc;
+  if(["TH","VN","ID","MY","PH","KH"].includes(cc))L.push(["12Go (bus, ferry, train)","https://12go.asia/en"]);
+  if(cc==="IN")L.push(["IRCTC trains","https://www.irctc.co.in"],["redBus","https://www.redbus.in"]);
+  if(["GB","FR","IT","ES","DE","AT","NL","CZ","PT"].includes(cc))L.push(["Trainline","https://www.thetrainline.com"]);
+  if(cc==="CH")L.push(["SBB Swiss trains","https://www.sbb.ch/en"]);
+  if(cc==="JP")L.push(["SmartEX Shinkansen","https://smart-ex.jp/en/"]);
+  L.push(["Klook transfers","https://www.klook.com/airport-transfers/"]);
+  if(seg.air&&seg.a.iata&&seg.b.iata)L.unshift([`Flights on Skyscanner`,flightLinkOW("sky",seg.a.iata,seg.b.iata,seg.date)]);
+  return L}
+
+/* ---------------- Header ---------------- */
+function cityOptions(selected,exclude=new Set(),prefCC=null){const groups={};CITIES.forEach(c=>{if(exclude.has(c.id))return;(groups[c.cc]=groups[c.cc]||[]).push(c)});
+  const keys=Object.keys(groups).sort((a,b)=>(a===prefCC?-1:b===prefCC?1:ccName(a).localeCompare(ccName(b))));
+  return keys.map(k=>`<optgroup label="${esc(ccName(k))}">${groups[k].map(c=>`<option value="${c.id}" ${c.id===selected?"selected":""}>${esc(c.city)}${c.iata?` (${c.iata})`:""}</option>`).join("")}</optgroup>`).join("")}
+function initForm(){
+  $("#from").innerHTML=cityOptions(S.from,new Set(),"IN");
+  $("#cc").innerHTML=Object.keys(BY_CC).sort((a,b)=>ccName(a).localeCompare(ccName(b))).map(c=>`<option value="${c}">${esc(ccName(c))} · ${BY_CC[c].length} cit${BY_CC[c].length>1?"ies":"y"}</option>`).join("");
+  $("#adults").innerHTML=[1,2,3,4,5,6,8,10].map(n=>`<option>${n}</option>`).join("");
+  $("#rooms").innerHTML=[1,2,3,4,5].map(n=>`<option>${n}</option>`).join("");
+  $("#cur").innerHTML=Object.keys(FX).map(c=>`<option>${c}</option>`).join("");
+  $("#dep").min=iso(addD(TODAY,1));
+  $("#search").addEventListener("change",e=>{const id=e.target.id;
+    if(id==="cc"){S.cc=$("#cc").value;S.stops=defStops(S.cc)}
+    S.from=$("#from").value;S.trip=$("#trip").value;S.adults=+$("#adults").value;S.rooms=+$("#rooms").value;S.cur=$("#cur").value;
+    if($("#dep").value)S.dep=$("#dep").value;if(parse(S.dep)<=TODAY)S.dep=iso(addD(TODAY,1));
+    syncForm();save();render()});
+  $("#search").addEventListener("submit",e=>e.preventDefault());
+  $("#stopRow").addEventListener("click",e=>{const b=e.target.closest("[data-act]");if(!b)return;const i=+b.dataset.i,a=b.dataset.act,L=S.stops;
+    if(a==="minus")L[i].n=Math.max(1,L[i].n-1);else if(a==="plus")L[i].n=Math.min(21,L[i].n+1);
+    else if(a==="up"&&i>0)[L[i-1],L[i]]=[L[i],L[i-1]];else if(a==="down"&&i<L.length-1)[L[i+1],L[i]]=[L[i],L[i+1]];
+    else if(a==="del"){if(L.length===1){toast("Keep at least one city");return}L.splice(i,1)}
+    syncForm();save();render()});
+  $("#stopRow").addEventListener("change",e=>{if(e.target.id!=="addStop"||!e.target.value)return;if(S.stops.length>=8){toast("Up to 8 cities per trip");return}S.stops.push({id:e.target.value,n:2,tier:S.stops[S.stops.length-1].tier||"upscale"});syncForm();save();render()});
+  syncForm()}
+function syncForm(){const J=journey();$("#from").value=S.from;$("#cc").value=S.cc;$("#trip").value=S.trip;$("#dep").value=S.dep;$("#adults").value=S.adults;$("#rooms").value=S.rooms;$("#cur").value=S.cur;
+  const O=ORIGIN();const flap=t=>`<div class="flap">${[...t].map(c=>`<span>${c}</span>`).join("")}</div>`;
+  $("#routeFlaps").innerHTML=flap(O.id)+J.stops.map(s=>`<span class="sep">→</span>${flap(s.c.id)}`).join("")+(S.trip==="round"?`<span class="sep">→</span>${flap(O.id)}`:`<span class="loopback">ONE WAY</span>`);
+  const last=J.stops[J.stops.length-1].c;
+  $("#routeCities").innerHTML=`<b>${esc(O.city)}</b> → ${J.stops.map(s=>`<b>${esc(sname(s.c))}</b> (${s.n}n)`).join(" → ")}${S.trip==="round"?` → <b>${esc(O.city)}</b>`:""} · ${fmtD(J.dep)} – ${fmtDY(J.ret)} · ${J.nights} nights · ${S.adults} traveller${S.adults>1?"s":""}${S.trip==="round"&&J.stops.length>1?`<br>Fly into ${esc(sname(J.stops[0].c))}, fly home from ${esc(sname(last))}${last.via?` via ${esc(apt(last).city)} airport`:""}.`:""}`;
+  const used=new Set(S.stops.map(s=>s.id));
+  $("#stopRow").innerHTML=J.stops.map((s,i)=>`<div class="stopc"><span class="no">${i+1}</span><span class="nm">${esc(sname(s.c))}<small>${fmtD(s.in)} – ${fmtD(s.out)}</small></span>
+    <span class="stepper"><button type="button" data-act="minus" data-i="${i}" aria-label="One night fewer in ${esc(s.c.city)}">−</button><b>${s.n}n</b><button type="button" data-act="plus" data-i="${i}" aria-label="One more night in ${esc(s.c.city)}">+</button></span>
+    ${i>0?`<button type="button" class="ib" data-act="up" data-i="${i}" aria-label="Move earlier">←</button>`:""}${i<J.stops.length-1?`<button type="button" class="ib" data-act="down" data-i="${i}" aria-label="Move later">→</button>`:""}<button type="button" class="ib" data-act="del" data-i="${i}" aria-label="Remove ${esc(s.c.city)}">✕</button></div>`).join("")+
+    `<select class="addstop" id="addStop" aria-label="Add a city"><option value="">+ Add city</option>${cityOptions(null,used,S.cc)}</select>`;
+  $("#stopsSum").textContent=`${J.stops.length} cit${J.stops.length>1?"ies":"y"} · return ${fmtDY(J.ret)}`;
+  $("#asof").textContent=`ESTIMATES AS OF ${fmtDY(TODAY).toUpperCase()}`}
+
+/* ---------------- Views ---------------- */
+const VIEWS={decide:vDecide,route:vRoute,flights:vFlights,hotels:vHotels,food:vFood,trends:vTrends,plan:vPlan,visa:vVisa,holidays:vHolidays,share:vShare};
+function route(){const h=location.hash.slice(1);return VIEWS[h]?h:"decide"}
+const after={};
+function render(){const r=route();document.querySelectorAll("#tabs a").forEach(a=>a.setAttribute("aria-current",a.getAttribute("href")==="#"+r?"page":"false"));const J=journey();$("#view").innerHTML=VIEWS[r](J);after[r]&&after[r](J)}
+const disclaimer=`<div class="disclaimer">Prices are estimates from a fare and rate model (distance, season, public holidays, day of week and booking window), refreshed for today's date. They are not live quotes. Each provider button opens that site's live results for your search.</div>`;
+function gauge(score){const r=52,c=2*Math.PI*r,col=score>=78?"var(--good)":score>=60?"var(--accent)":score>=45?"var(--warn)":"var(--bad)";return`<div class="gauge"><svg viewBox="0 0 120 120"><circle cx="60" cy="60" r="${r}" fill="none" stroke="var(--line)" stroke-width="10"/><circle cx="60" cy="60" r="${r}" fill="none" stroke="${col}" stroke-width="10" stroke-linecap="round" stroke-dasharray="${c*score/100} ${c}"/></svg><div class="v"><div><b>${score}</b><small>Trip score</small></div></div></div>`}
+function dateStrip(J){const days=[];for(let i=-7;i<=7;i++){const x=addD(J.dep,i);if(x<=TODAY)continue;const j=journey(iso(x));days.push({x,p:flightsTotal(j)})}
+  const ps=days.map(d=>d.p),mn=Math.min(...ps),mx=Math.max(...ps);
+  return`<div class="strip" id="strip">${days.map(dd=>{const t=(dd.p-mn)/((mx-mn)||1);const lv=t<.2?"low":t>.8?"high":"";return`<button class="day ${iso(dd.x)===S.dep?"sel":""} ${lv}" data-d="${iso(dd.x)}" aria-label="Depart ${fmtD(dd.x)}, flights ${money(dd.p)}"><small>${DOW[dd.x.getDay()]}</small><b>${dd.x.getDate()} ${MON[dd.x.getMonth()]}</b><span class="p">${shortMoney(dd.p)}</span><span class="bar" style="background:linear-gradient(90deg,${t<.2?"var(--good)":t>.8?"var(--bad)":"var(--accent)"} ${Math.round(20+t*80)}%,var(--line) 0)"></span></button>`}).join("")}</div><p class="note">All flights on this route for ${S.adults}, keeping your nights in each city. Tap a day to move the whole trip.</p>`}
+function bindStrip(){const s=$("#strip");if(!s)return;s.addEventListener("click",e=>{const b=e.target.closest(".day");if(!b)return;S.dep=b.dataset.d;syncForm();save();render()});const sel=s.querySelector(".sel");if(sel)s.scrollLeft=sel.offsetLeft-s.clientWidth/2+31}
+
+function vDecide(J){const v=verdict(J);const c=costs(J);const fl=c.items[0].v;
+  return`<div class="sec-head"><div><h2>Should you book this trip?</h2><p>${J.stops.length} cit${J.stops.length>1?"ies":"y"} in ${[...new Set(J.stops.map(s=>ccName(s.c.cc)))].join(" & ")}, ${J.nights} nights. One read of fares, season, holidays, transfers and visa timing.</p></div></div>
+  <div class="grid2">
+    <section class="panel"><div class="verdict">${gauge(v.score)}<div><div class="eyebrow">Verdict</div><h3>${v.head}</h3><p class="note" style="margin:0">All flights today: <b class="num">${money(fl)}</b> for ${S.adults}.${v.min?` Lowest expected: <b class="num">${money(v.min)}</b>${v.minAt.k?` around ${fmtD(v.minAt.date)}`:" (now)"}.`:""}</p></div></div>
+      <div class="signals">${v.sig.map(s=>`<div class="signal"><span class="dot ${s.s}"></span><div><b>${esc(s.t)}</b><small>${esc(s.d)}</small></div></div>`).join("")}</div></section>
+    <section class="panel"><div class="eyebrow">Estimated trip cost · ${S.adults} traveller${S.adults>1?"s":""}, ${J.nights} nights</div>
+      <div class="total num">${money(c.total)}</div><div class="note">${money(c.total/S.adults)} per person</div>
+      <div class="stack">${c.items.filter(i=>i.v>0).map(i=>`<i style="width:${i.v/c.total*100}%;background:${i.c}" title="${i.k}"></i>`).join("")}</div>
+      <div class="legend">${c.items.map(i=>`<div><s style="background:${i.c}"></s><span>${i.k}</span><b class="num">${money(i.v)}</b></div>`).join("")}</div>
+      <p class="note" style="margin-bottom:0">Hotel class is set per city on the Hotels tab; food style on the Food tab.</p></section>
+  </div>
+  <section class="panel"><h3>Your route at a glance</h3>${miniRoute(J)}<p class="note" style="margin-bottom:0"><a href="#route">See every flight and transfer →</a></p></section>
+  <section class="panel"><h3>Cheapest days to start</h3>${dateStrip(J)}</section>
+  <section class="panel" id="aiBox" hidden><h3>Ask the trip advisor</h3><p class="note" style="margin-top:0">Answers use this trip's route and numbers. Try "Is 2 nights enough in Krabi?" or "Best order for these cities?".</p>
+    <form class="ai-in" id="aiForm"><input id="aiQ" placeholder="Ask about this trip" aria-label="Question for the trip advisor"><button class="btn primary" type="submit">Ask</button></form><div class="ai-out" id="aiOut" hidden></div></section>
+  ${disclaimer}`}
+function segLabel(s){return s.type==="flight"?`Flight ${s.a.iata}→${s.b.iata}`:s.mode}
+function miniRoute(J){return`<div class="tbl-wrap"><table><thead><tr><th>Date</th><th>From → To</th><th>How</th><th class="r">Time</th><th class="r">Cost for ${S.adults}</th></tr></thead><tbody>${J.legs.map(l=>{const t=l.segs.reduce((a,s)=>a+s.hours,0);const p=l.segs.reduce((a,s)=>a+(s.type==="flight"?segBest(s).total:groundCost(s)),0);
+  return`<tr><td class="mono">${fmtD(l.date)}</td><td><b>${esc(sname(l.from))} → ${esc(sname(l.to))}</b>${l.kind!=="xfer"?` <span class="tag ${l.segs.some(s=>s.intl)?"intl":""}">${l.kind==="out"?"Outbound":"Return"}</span>`:""}</td><td>${l.segs.map(segLabel).map(esc).join(" + ")}</td><td class="r mono">${fmtHrs(t)}</td><td class="r mono"><b>${money(p)}</b></td></tr>`}).join("")}</tbody></table></div>`}
+after.decide=J=>{bindStrip();initAI()};
+let SAMPLE=null,sampleTried=false;
+async function initAI(){if(!$("#aiBox"))return;if(!sampleTried){sampleTried=true;try{SAMPLE=window.claude?await window.claude.use("sample"):null}catch(e){SAMPLE=null}}if(!SAMPLE||!$("#aiBox"))return;$("#aiBox").hidden=false;
+  $("#aiForm").addEventListener("submit",async e=>{e.preventDefault();const q=$("#aiQ").value.trim();if(!q)return;const out=$("#aiOut");out.hidden=false;out.textContent="Thinking…";
+    try{await SAMPLE(`You are a concise, practical travel advisor. Use the trip summary below (prices are model estimates, not live quotes). Answer in under 220 words with short bullet points where helpful, and say when something must be checked on an official site.\n\nTRIP SUMMARY\n${shareText()}\n\nQUESTION: ${q}`,{onText:({text})=>{out.textContent=text},modelTier:"default",cache:false})}catch(err){out.textContent=err&&err.code==="rate_limited"?"Too many questions in a short time. Try again in a minute.":err&&err.code==="not_granted"?"The advisor needs your permission to answer. Allow it from this page's permissions menu.":"The advisor could not answer right now."}})}
+
+const modeTag=s=>s.type==="flight"?"FLT":/train|shinkansen|ktx|tgv/i.test(s.mode)?"RAIL":/ferry|boat|cruise|seaplane/i.test(s.mode)?"SEA":/flight/i.test(s.mode)?"FLT":"ROAD";
+function segBlock(s){if(s.type==="flight"){const q=segBest(s);return`<div class="seg"><div><div class="md">Flight ${s.a.iata} → ${s.b.iata} <span class="tag ${s.intl?"intl":""}">${s.intl?"International":"Domestic"}</span></div><div class="meta">${esc(s.a.city)} to ${esc(s.b.city)} · ${DOW[s.date.getDay()]} ${fmtD(s.date)} · ~${fmtHrs(s.hours)} nonstop · ${Math.round(km(s.a,s.b)).toLocaleString()} km</div></div>
+  <div class="pr">${money(q.total)}<small>best est. on ${q.name}</small></div><div class="lk"><a class="btn small primary" href="${fLink(q.id,s)}" target="_blank" rel="noopener">Book on ${q.name} ↗</a><a class="btn small" href="#flights">Compare 8 sites</a></div></div>`}
+  return`<div class="seg"><div><div class="md">${esc(s.mode)}</div><div class="meta">${esc(sname(s.a))} to ${esc(sname(s.b))} · ${fmtD(s.date)} · about ${fmtHrs(s.hours)}${s.note?` · ${esc(s.note)}`:""}</div></div><div class="pr">${s.usd?money(groundCost(s)):"Included"}<small>${s.usd?`about ${money(s.usd*FX.USD)} per person`:""}</small></div>
+  <div class="lk">${groundLinks(s).map(([t,u],i)=>`<a class="btn small ${i===0?"primary":""}" href="${u}" target="_blank" rel="noopener">${esc(t)} ↗</a>`).join("")}</div></div>`}
+function vRoute(J){const O=ORIGIN();let h="";
+  const node=(badge,cls,body,last)=>`<div class="tl-node"><div class="tl-rail"><span class="b ${cls}">${badge}</span>${last?"":`<span class="ln"></span>`}</div><div class="tl-body">${body}</div></div>`;
+  h+=node(O.id,"city",`<div class="citycard"><span class="eyebrow">Start</span><h3>${esc(O.city)}</h3><span class="note">${ccName(O.cc)} · leave ${DOW[J.dep.getDay()]} ${fmtDY(J.dep)}</span></div>`);
+  J.legs.forEach((l,li)=>{const t=l.segs.reduce((a,s)=>a+s.hours,0);
+    h+=node("","", `<div class="leg-title">${l.kind==="out"?"Getting there":l.kind==="ret"?"Heading home":"Transfer"} · ${esc(sname(l.from))} → ${esc(sname(l.to))}</div><p class="note" style="margin:0 0 8px">${l.segs.length>1?`${l.segs.length} legs, `:""}about ${fmtHrs(t+(l.segs.length>1?(l.segs.length-1)*1.5:0))} door to door${l.segs.length>1?" including changeover time":""}.</p>`);
+    l.segs.forEach(s=>{h+=node(modeTag(s),s.type==="flight"||/^Flight/.test(s.mode)?"fl":"gr",segBlock(s))});
+    if(l.kind!=="ret"){const st=J.stops.find(x=>x.c.id===l.to.id&&diffD(x.in,l.date)===0)||J.stops[li];const hb=hotelBest(st);
+      h+=node(st.c.id,"city",`<div class="citycard"><span class="eyebrow">Stop ${J.stops.indexOf(st)+1} · ${ccName(st.c.cc)}</span><h3>${esc(sname(st.c))}</h3><div class="kv" style="margin-top:6px"><div><span>Stay</span><b>${fmtD(st.in)} – ${fmtD(st.out)} · ${st.n}n</b></div><div><span>Hotel (${TIERS.find(t=>t.k===st.tier).n})</span><b class="num">${money(hb.night)}/night</b></div><div><span>Food per day</span><b class="num">${money(foodDay(st.c.cc))} pp</b></div><div><span>Stay in</span><b>${esc(st.c.areas.slice(0,2).join(", "))}</b></div></div></div>`,li===J.legs.length-1)}});
+  if(S.trip==="round")h+=node(O.id,"city",`<div class="citycard"><span class="eyebrow">Home</span><h3>${esc(O.city)}</h3><span class="note">Back ${DOW[J.ret.getDay()]} ${fmtDY(J.ret)}</span></div>`,true);
+  return`<div class="sec-head"><div><h2>Route &amp; transfers</h2><p>Every flight, connection, ferry, train and car between your cities. Cities without their own airport are reached through the nearest one, and small airports connect through the country's main gateway.</p></div></div>
+  <section class="panel"><div class="tl">${h}</div></section>${disclaimer}`}
+
+function provRow(p,href,prefill,cells,best){return`<tr class="${best?"best":""}"><td><div class="prov"><span class="mk" style="background:${p.col}">${p.mk}</span><div>${p.name}${best?' <span class="pill acc">Lowest</span>':""}<div class="note" style="font-weight:400">${p.kind}</div></div></div></td>${cells}<td class="r"><a class="btn small ${best?"primary":""}" href="${href}" target="_blank" rel="noopener">${prefill?"See live fares":"Open site"} ↗</a></td></tr>`}
+function vFlights(J){const segs=allSegs(J).filter(s=>s.type==="flight");const total=flightsTotal(J);const mc=multiCityLinks(J);
+  const O=ORIGIN(),first=J.stops[0].c,last=J.stops[J.stops.length-1].c;
+  let compare="";if(S.trip==="round"&&first.id!==last.id){const alt=journeyAlt(J);compare=`<section class="panel"><h3>Open-jaw vs a plain return</h3><div class="grid3">
+    <div><div class="eyebrow">Your route</div><b class="total num" style="font-size:30px">${money(total)}</b><div class="note">Into ${esc(sname(first))}, home from ${esc(sname(last))}. No backtracking.</div></div>
+    <div><div class="eyebrow">Plain return to ${esc(sname(first))}</div><b class="total num" style="font-size:30px">${money(alt.total)}</b><div class="note">Flights only. Add about ${money(alt.extra)} and ${fmtHrs(alt.hours)} to get back to ${esc(sname(first))}.</div></div>
+    <div><div class="eyebrow">Verdict</div><b style="font-size:17px">${total<=alt.total+alt.extra?"Open-jaw wins":"Plain return is cheaper"}</b><div class="note">${total<=alt.total+alt.extra?`Saves about ${money(alt.total+alt.extra-total)} and a travel day.`:`Saves about ${money(total-alt.total-alt.extra)}, but costs you a travel day.`}</div></div></div></section>`}
+  return`<div class="sec-head"><div><h2>Flights</h2><p>${segs.length} flight${segs.length>1?"s":""} on this ${S.trip==="round"?"open-jaw round trip":"one-way trip"}. Each is priced one way, so you can book them separately or together as a multi-city ticket.</p></div><div role="group" aria-label="Trip type" style="display:inline-flex;border:1px solid var(--line);border-radius:9px;overflow:hidden">${[["round","Round trip"],["oneway","One way"]].map(([k,n])=>`<button class="tt" data-t="${k}" aria-pressed="${S.trip===k}" style="border:0;padding:7px 12px;cursor:pointer;font-weight:600;font-size:13.5px;background:${S.trip===k?"var(--ink)":"var(--surface)"};color:${S.trip===k?"var(--surface)":"var(--muted)"}">${n}</button>`).join("")}</div></div>
+  <div class="pass"><div class="main"><div class="codes"><span>${O.iata||apt(O).iata}</span><span class="ln"></span><span>${S.trip==="round"?(O.iata||apt(O).iata):(last.iata||apt(last).iata)}</span></div><div class="kv"><div><span>Flights</span><b>${segs.length}</b></div><div><span>Depart</span><b>${fmtDY(J.dep)}</b></div><div><span>${S.trip==="round"?"Return":"Last flight"}</span><b>${fmtDY(S.trip==="round"?J.ret:segs[segs.length-1]?.date||J.dep)}</b></div><div><span>Type</span><b>${S.trip==="round"?"Open-jaw round trip":"One way"}</b></div></div></div>
+    <div class="stub"><span class="eyebrow">All flights</span><b class="total num" style="font-size:34px">${money(total)}</b><span class="note">${S.adults} traveller${S.adults>1?"s":""}, best site per flight</span></div></div>
+  ${mc?`<section class="panel"><h3>Book as one multi-city ticket</h3><p class="note" style="margin-top:0">One ticket protects your connections if a flight is delayed. Compare it against booking each flight separately below.</p><div class="links"><a class="btn primary" href="${mc.mmt}" target="_blank" rel="noopener">MakeMyTrip multi-city ↗</a><a class="btn" href="${mc.g}" target="_blank" rel="noopener">Google Flights multi-city ↗</a><a class="btn" href="https://www.skyscanner.co.in/flights" target="_blank" rel="noopener">Skyscanner multi-city ↗</a></div></section>`:""}
+  ${compare}
+  ${segs.map((s,i)=>{const q=segQuotes(s);return`<article class="fcard"><div class="fh"><div><div class="row" style="gap:8px"><span class="tag ${s.intl?"intl":""}">${s.intl?"International":"Domestic"}</span><span class="tag">${s.leg.kind==="out"?"Outbound":s.leg.kind==="ret"?"Return":"Between cities"}</span></div>
+    <div class="codes" style="margin-top:8px"><span>${s.a.iata}</span><span class="ln"></span><span>${s.b.iata}</span></div><div class="note">${esc(s.a.city)} → ${esc(s.b.city)} · ${DOW[s.date.getDay()]} ${fmtDY(s.date)} · ~${fmtHrs(s.hours)} · ${Math.round(km(s.a,s.b)).toLocaleString()} km</div></div>
+    <div style="text-align:right"><b class="total num" style="font-size:28px">${money(q[0].total)}</b><div class="note">${money(q[0].per)} per adult · ${q[0].name}</div></div></div>
+    <div class="fb"><details class="more" ${i===0?"open":""}><summary>Compare ${q.length} booking sites</summary><div class="tbl-wrap"><table><thead><tr><th>Site</th><th class="r">Per adult</th><th class="r">Total</th><th class="r">Conv. fee</th><th class="r"></th></tr></thead><tbody>
+    ${q.map((p,j)=>provRow(p,fLink(p.id,s),PREFILL_F.has(p.id),`<td class="r mono">${money(p.per)}</td><td class="r mono"><b>${money(p.total)}</b></td><td class="r mono">${p.fee?money(p.fee):"None"}</td>`,j===0)).join("")}</tbody></table></div></details></div></article>`}).join("")}
+  <section class="panel"><h3>Shift your dates to save</h3>${dateStrip(J)}</section>
+  <section class="panel"><h3>Live tools</h3><div class="links">${[...new Set(segs.map(s=>s.a.iata))].slice(0,4).map(c=>`<a class="btn small" target="_blank" rel="noopener" href="https://www.flightradar24.com/data/airports/${c.toLowerCase()}">Live board ${c} ↗</a>`).join("")}<a class="btn small" target="_blank" rel="noopener" href="https://www.skyscanner.co.in/price-alerts">Skyscanner price alerts ↗</a></div></section>
+  ${disclaimer}`}
+function journeyAlt(J){const O=ORIGIN(),first=J.stops[0].c,last=J.stops[J.stops.length-1].c;const out=planTravel(O,first,J.dep).filter(s=>s.type==="flight");const back=planTravel(first,O,J.ret).filter(s=>s.type==="flight");
+  const total=[...out,...back].reduce((a,s)=>a+segBest(s).total,0);const link=planTravel(last,first,J.ret);const extra=link.reduce((a,s)=>a+(s.type==="flight"?segBest(s).total:groundCost(s)),0);return{total,extra,hours:link.reduce((a,s)=>a+s.hours,0)}}
+after.flights=J=>{bindStrip();document.querySelectorAll(".tt").forEach(b=>b.addEventListener("click",()=>{S.trip=b.dataset.t;syncForm();save();render()}))};
+
+function vHotels(J){return`<div class="sec-head"><div><h2>Hotels, city by city</h2><p>Pick a hotel class for each stop. Rates include the season, weekends and local holidays on your nights there.</p></div></div>
+  ${J.stops.map((st,i)=>{const q=hotelQuotes(st);const best=q.find(h=>h.id!=="abb");return`<section class="panel stop-sec"><header><div><span class="eyebrow">Stop ${i+1} · ${fmtD(st.in)} – ${fmtD(st.out)} · ${st.n} night${st.n>1?"s":""}</span><h3>${esc(sname(st.c))}</h3></div><div class="seg-tiers" role="group" aria-label="Hotel class for ${esc(st.c.city)}" style="display:inline-flex;border:1px solid var(--line);border-radius:9px;overflow:hidden;flex-wrap:wrap">${TIERS.map(t=>`<button class="tbtn" data-i="${i}" data-t="${t.k}" aria-pressed="${st.tier===t.k}" style="border:0;padding:7px 11px;cursor:pointer;font-weight:600;font-size:13px;background:${st.tier===t.k?"var(--ink)":"var(--surface)"};color:${st.tier===t.k?"var(--surface)":"var(--muted)"}">${"★".repeat(t.s)} ${t.n}</button>`).join("")}</div></header>
+    <div class="row"><span class="note">Best: <b>${money(best.night)}/night</b> on ${best.name} · ${money(best.total)} for ${S.rooms} room${S.rooms>1?"s":""}</span>${st.c.areas.map(a=>`<span class="pill">${esc(a)}</span>`).join("")}</div>
+    <details class="more" ${i===0?"open":""}><summary>Compare ${q.length} sites for ${esc(sname(st.c))}</summary><div class="tbl-wrap"><table><thead><tr><th>Site</th><th class="r">Per night</th><th class="r">Stay total</th><th class="r"></th></tr></thead><tbody>
+    ${q.map(p=>provRow(p,hotelLink(p.id,st),PREFILL_H.has(p.id),`<td class="r mono">${money(p.night)}</td><td class="r mono"><b>${money(p.total)}</b></td>`,p===best)).join("")}</tbody></table></div></details></section>`}).join("")}
+  <section class="panel"><div class="eyebrow">All hotels</div><b class="total num">${money(J.stops.reduce((a,st)=>a+hotelBest(st).total,0))}</b><span class="note"> for ${J.nights} nights across ${J.stops.length} cit${J.stops.length>1?"ies":"y"}</span></section>${disclaimer}`}
+after.hotels=J=>{document.querySelectorAll(".tbtn").forEach(b=>b.addEventListener("click",()=>{S.stops[+b.dataset.i].tier=b.dataset.t;save();syncForm();render()}))};
+
+function vFood(J){const ccs=[...new Set(J.stops.map(s=>s.c.cc))];
+  return`<div class="sec-head"><div><h2>Food guide</h2><p>What to eat, how easy vegetarian and Indian food is, and what a day of meals costs at each stop.</p></div><div style="display:inline-flex;border:1px solid var(--line);border-radius:9px;overflow:hidden">${FOOD_STYLES.map(f=>`<button class="fbtn" data-f="${f.k}" aria-pressed="${S.food===f.k}" style="border:0;padding:7px 12px;cursor:pointer;font-weight:600;font-size:13.5px;background:${S.food===f.k?"var(--ink)":"var(--surface)"};color:${S.food===f.k?"var(--surface)":"var(--muted)"}">${f.n}</button>`).join("")}</div></div>
+  ${ccs.map(cc=>{const f=foodInfo(cc);return`<section class="panel"><div class="eyebrow">${esc(ccName(cc))}</div><h3 style="margin:6px 0 10px">Must-try dishes</h3><div class="row">${f[0].split("|").map(d=>`<span class="pill acc">${esc(d)}</span>`).join("")}</div>
+    <div class="grid3" style="margin-top:14px"><div><div class="eyebrow">Vegetarian</div><p style="margin:4px 0 0">${esc(f[1])}</p></div><div><div class="eyebrow">Indian food</div><p style="margin:4px 0 0">${esc(f[2])}</p></div><div><div class="eyebrow">Typical meal</div><p style="margin:4px 0 0" class="num">Street ${money(f[3][0]*FX.USD)} · Casual ${money(f[3][1]*FX.USD)} · Nice ${money(f[3][2]*FX.USD)}</p></div></div></section>`}).join("")}
+  <section class="panel"><h3>Food budget by stop</h3><div class="tbl-wrap"><table><thead><tr><th>Stop</th><th>Where to eat</th><th class="r">Per person / day</th><th class="r">Days</th><th class="r">Total for ${S.adults}</th></tr></thead><tbody>
+  ${J.stops.map((st,i)=>{const days=st.n+(i===J.stops.length-1?1:0);return`<tr><td><b>${esc(sname(st.c))}</b></td><td>${esc(st.c.eat)}</td><td class="r mono">${money(foodDay(st.c.cc))}</td><td class="r mono">${days}</td><td class="r mono"><b>${money(foodDay(st.c.cc)*days*S.adults)}</b></td></tr>`}).join("")}</tbody></table></div>
+  <p class="note">Hotel breakfast is not deducted. Maldives resorts and safari camps often sell meal plans; budget for half or full board there.</p></section>
+  <section class="panel"><h3>Find food on the go</h3><div class="links"><a class="btn small" href="https://www.happycow.net" target="_blank" rel="noopener">HappyCow (vegetarian) ↗</a><a class="btn small" href="https://www.tripadvisor.in/Restaurants" target="_blank" rel="noopener">Tripadvisor restaurants ↗</a><a class="btn small" href="https://www.google.com/maps/search/indian+restaurant+${encodeURIComponent(sname(J.stops[0].c))}" target="_blank" rel="noopener">Indian restaurants in ${esc(sname(J.stops[0].c))} ↗</a></div></section>`}
+after.food=()=>{document.querySelectorAll(".fbtn").forEach(b=>b.addEventListener("click",()=>{S.food=b.dataset.f;save();render()}))};
+
+function lineChart(series,{w=760,h=260,pad=[20,30,34,60],band=null,mark=null,xl}){
+  const all=series.flatMap(s=>s.pts.map(p=>p.y)).concat(band?band.flatMap(b=>[b.lo,b.hi]):[]);let mn=Math.min(...all),mx=Math.max(...all);const span=mx-mn||1;mn-=span*.1;mx+=span*.1;
+  const n=Math.max(...series.flatMap(s=>s.pts.map(p=>p.i)))+1;const X=i=>pad[3]+i*(w-pad[1]-pad[3])/Math.max(1,n-1),Y=v=>pad[0]+(1-(v-mn)/(mx-mn))*(h-pad[0]-pad[2]);
+  const ticks=[];const step=niceStep((mx-mn)/4);for(let t=Math.ceil(mn/step)*step;t<=mx;t+=step)ticks.push(t);
+  let g=ticks.map(t=>`<line x1="${pad[3]}" x2="${w-pad[1]}" y1="${Y(t)}" y2="${Y(t)}" stroke="var(--line)" stroke-width="1"/><text x="${pad[3]-8}" y="${Y(t)+4}" text-anchor="end">${shortMoney(t)}</text>`).join("");
+  g+=xl.map((l,i)=>l?`<text x="${X(i)}" y="${h-10}" text-anchor="middle">${l}</text>`:"").join("");
+  if(band)g+=`<path d="${band.map((b,i)=>`${i?"L":"M"}${X(b.i)},${Y(b.hi)}`).join("")}${band.slice().reverse().map(b=>`L${X(b.i)},${Y(b.lo)}`).join("")}Z" fill="var(--accent)" opacity=".15"/>`;
+  for(const s of series){const d=s.pts.map((p,i)=>`${i?"L":"M"}${X(p.i)},${Y(p.y)}`).join("");if(s.area)g+=`<path d="${d}L${X(s.pts[s.pts.length-1].i)},${h-pad[2]}L${X(s.pts[0].i)},${h-pad[2]}Z" fill="${s.col}" opacity=".1"/>`;g+=`<path d="${d}" fill="none" stroke="${s.col}" stroke-width="2.5" ${s.dash?'stroke-dasharray="6 5"':""} stroke-linejoin="round"/>`;const L=s.pts[s.pts.length-1];if(s.end)g+=`<circle cx="${X(L.i)}" cy="${Y(L.y)}" r="4.5" fill="${s.col}"/>`}
+  if(mark)g+=`<circle cx="${X(mark.i)}" cy="${Y(mark.y)}" r="6" fill="var(--surface)" stroke="var(--good)" stroke-width="3"/><text x="${X(mark.i)+(mark.i===0?12:0)}" y="${Y(mark.y)-12}" text-anchor="${mark.i===0?"start":"middle"}" style="fill:var(--good);font-weight:600">${mark.label}</text>`;
+  return`<div class="chart"><svg viewBox="0 0 ${w} ${h}" role="img">${g}</svg></div>`}
+function niceStep(x){const p=10**Math.floor(Math.log10(x||1));const f=x/p;return(f<1.5?1:f<3?2:f<7?5:10)*p}
+function pairTrend(o,d,mStart,count){const out=[];for(let i=0;i<count;i++){const m=new Date(TODAY.getFullYear(),TODAY.getMonth()+mStart+i,15);let s=0,c=0;for(const day of [5,12,19,26]){const dt=new Date(m.getFullYear(),m.getMonth(),day);if(dt>TODAY&&diffD(TODAY,dt)<21)continue;const b=dt<=TODAY?addD(dt,-45):(addD(dt,-45)<TODAY?TODAY:addD(dt,-45));s+=(fare(o,d,dt,b)+fare(d,o,addD(dt,7),b))*S.adults;c++}if(!c){const dt=addD(TODAY,21);s=(fare(o,d,dt)+fare(d,o,addD(dt,7)))*S.adults;c=1}out.push({m,p:s/c})}return out}
+function vTrends(J){const mp=mainPair(J);if(!mp)return`<div class="sec-head"><div><h2>Fare trends</h2><p>This trip has no flights; transfers are by road, rail or sea.</p></div></div>`;
+  const [o,d]=mp;const past=pairTrend(o,d,-12,12),ahead=pairTrend(o,d,0,9);const v=verdict(J);
+  const all=past.concat(ahead);const xl=all.map((p,i)=>i%2?"":MON[p.m.getMonth()]+" "+String(p.m.getFullYear()).slice(2));
+  const pastPts=past.map((p,i)=>({i,y:p.p})).concat([{i:past.length,y:ahead[0].p}]);const aheadPts=ahead.map((p,i)=>({i:i+past.length,y:p.p}));
+  const band=ahead.map((p,i)=>({i:i+past.length,lo:p.p*(1-.04-i*.012),hi:p.p*(1+.04+i*.012)}));
+  const yoy=past[0].p,last=past[past.length-1].p,cheapM=ahead.slice(1).reduce((a,b)=>b.p<a.p?b:a,ahead[1]);
+  const curve=bookingCurve(J);const cPts=curve.map(c=>({i:c.k,y:c.p}));const mi=cPts.length?cPts.reduce((a,b)=>b.y<a.y?b:a,cPts[0]):null;
+  return`<div class="sec-head"><div><h2>Fare trends</h2><p>Main route ${o.iata}–${d.iata} (${esc(o.city)} to ${esc(d.city)}) round-trip average for ${S.adults}, plus when to buy all ${allSegs(J).filter(s=>s.type==="flight").length} flights on your trip.</p></div></div>
+  <div class="grid3">
+    <div class="panel"><div class="eyebrow">Past 12 months</div><h3 style="margin:6px 0 0" class="num">${last>yoy?"+":""}${Math.round((last/yoy-1)*100)}% vs a year ago</h3><span class="note">Last month averaged ${money(last)}</span></div>
+    <div class="panel"><div class="eyebrow">Cheapest month ahead</div><h3 style="margin:6px 0 0">${MON[cheapM.m.getMonth()]} ${cheapM.m.getFullYear()}</h3><span class="note">Around ${money(cheapM.p)}</span></div>
+    <div class="panel"><div class="eyebrow">For your trip</div><h3 style="margin:6px 0 0">${v.minAt.k?`Wait ~${v.minAt.k} week${v.minAt.k>1?"s":""}`:"Book now"}</h3><span class="note">Lowest expected ${money(v.min)} for all flights</span></div></div>
+  <section class="panel"><h3>${o.iata}–${d.iata} monthly average: last 12 months and next 8</h3>${lineChart([{pts:pastPts,col:"var(--teal)",area:true},{pts:aheadPts,col:"var(--accent)",dash:true,end:true}],{band,xl})}
+    <div class="row note"><span><b style="color:var(--teal)">━</b> Past average (booked ~45 days ahead)</span><span><b style="color:var(--accent)">╍</b> Expected, with likely range</span></div></section>
+  <section class="panel"><h3>When to buy all flights for ${fmtDY(J.dep)}</h3><p class="note" style="margin-top:0">Expected total if you book this week, next week and so on.</p>${cPts.length>1?lineChart([{pts:cPts,col:"var(--ink)",area:true,end:true}],{h:220,xl:curve.map(c=>c.k===0?"Now":"+"+c.k+"w"),mark:{...mi,label:"Lowest"}}):`<p>Departure is less than a week away. Book now.</p>`}</section>${disclaimer}`}
+
+/* Itinerary */
+function planKey(){return`plan:${S.from}:${S.trip}:${S.dep}:${S.stops.map(s=>s.id+s.n).join("-")}`}
+function genPlan(J){const days=[];const ptr={};const nx=c=>{ptr[c.id]=ptr[c.id]||0;return c.sights[ptr[c.id]++%c.sights.length]};
+  J.stops.forEach((st,i)=>{for(let j=0;j<st.n;j++){const items=[];const c=st.c;
+    if(j===0){const leg=J.legs[i];const how=leg.segs.map(segLabel).join(" + ");items.push({t:i===0?"Arrive":"Transfer",x:i===0?`Travel ${sname(leg.from)} → ${sname(c)} (${how})`:`${sname(leg.from)} → ${sname(c)}: ${how}, about ${fmtHrs(leg.segs.reduce((a,s)=>a+s.hours,0))}`});items.push({t:"Check in",x:`Hotel in ${c.areas[0]}`});items.push({t:"Evening",x:nx(c)})}
+    else{items.push({t:"Morning",x:nx(c)});items.push({t:"Afternoon",x:nx(c)});items.push({t:"Evening",x:j===1?`Dinner: ${c.eat}`:nx(c)})}
+    days.push({city:c.id,items})}});
+  const lastLeg=J.legs[J.legs.length-1];const lc=J.stops[J.stops.length-1].c;
+  days.push({city:lc.id,items:S.trip==="round"?[{t:"Morning",x:"Check out, last-minute shopping"},{t:"Depart",x:`${sname(lc)} → ${sname(ORIGIN())}: ${lastLeg.segs.map(segLabel).join(" + ")}`}]:[{t:"Morning",x:"Check out"},{t:"Onward",x:`Trip ends in ${sname(lc)}`}]});return days}
+function getPlan(J){const p=store.get(planKey(),null);return p&&p.length===J.nights+1?p:genPlan(J)}
+function vPlan(J){const plan=getPlan(J);
+  return`<div class="sec-head"><div><h2>Itinerary</h2><p>Day by day across ${J.stops.map(s=>esc(sname(s.c))).join(", ")}, with transfer days built in. Edit, reorder or add your own; it saves in this browser.</p></div><div class="row"><button class="btn" id="regen">Reset plan</button><a class="btn primary" href="#share">Share plan</a></div></div>
+  <div class="days" id="days">${plan.map((d,i)=>{const dt=addD(J.dep,i);const c=CITY[d.city];const hs=holidaysNear(c.cc,dt,0,0);return`<article class="dcard"><header><div><b>Day ${i+1}</b> <span class="note">${DOW[dt.getDay()]}, ${fmtDY(dt)} · ${esc(sname(c))}</span></div>${hs.length?`<span class="hol-flag">Holiday: ${esc(hs[0][1])}. Some sights may close.</span>`:""}</header>
+    <ol>${d.items.map((it,j)=>`<li><span class="t">${esc(it.t)}</span><span>${esc(it.x)}</span><span class="acts"><button class="icon-btn" data-a="up" data-d="${i}" data-j="${j}" aria-label="Move up">↑</button><button class="icon-btn" data-a="down" data-d="${i}" data-j="${j}" aria-label="Move down">↓</button><button class="icon-btn" data-a="del" data-d="${i}" data-j="${j}" aria-label="Remove">✕</button></span></li>`).join("")}</ol>
+    <form class="add-row" data-d="${i}"><select id="slot${i}" aria-label="Time">${["Morning","Afternoon","Evening","Night"].map(s=>`<option>${s}</option>`).join("")}</select><input id="add${i}" placeholder="Add an activity" aria-label="Activity for day ${i+1}"><button class="btn small" type="submit">Add</button></form></article>`}).join("")}</div>`}
+after.plan=J=>{const save2=p=>{store.set(planKey(),p);render()};
+  $("#days").addEventListener("click",e=>{const b=e.target.closest("[data-a]");if(!b)return;const p=getPlan(J);const L=p[+b.dataset.d].items,j=+b.dataset.j;
+    if(b.dataset.a==="del")L.splice(j,1);else if(b.dataset.a==="up"&&j>0)[L[j-1],L[j]]=[L[j],L[j-1]];else if(b.dataset.a==="down"&&j<L.length-1)[L[j+1],L[j]]=[L[j],L[j+1]];save2(p)});
+  $("#days").addEventListener("submit",e=>{e.preventDefault();const i=+e.target.dataset.d;const x=$("#add"+i).value.trim();if(!x)return;const p=getPlan(J);p[i].items.push({t:$("#slot"+i).value,x});save2(p)});
+  $("#regen").addEventListener("click",()=>{store.del(planKey());render();toast("Plan reset")})};
+
+/* Visa */
+let visaQ="",visaSort="name";
+function vVisa(J){const ccs=destCountries(J);const daysOut=diffD(TODAY,J.dep);
+  return`<div class="sec-head"><div><h2>Visa &amp; entry fees</h2><p>For Indian passport holders. Costs are per person in rupees including the usual service charge. Rules change often; confirm on the official site before you apply.</p></div></div>
+  ${ccs.length?ccs.map(cc=>{const v=visaOf(cc);return`<section class="panel vcard"><div><div class="eyebrow">${esc(ccName(cc))}</div><h3 style="font-size:20px;margin:6px 0">${esc(v[0])}</h3><p style="margin:0 0 8px">${esc(v[4])}</p>
+    <div class="kv"><div><span>Stay allowed</span><b>${esc(v[3])}</b></div><div><span>Processing</span><b>${v[2]?`~${v[2]} days`:"None"}</b></div><div><span>For ${S.adults}</span><b class="num">${money(v[1]*S.adults)}</b></div><div><span>Apply by</span><b>${v[2]?fmtDY(addD(J.dep,-(v[2]+7))):"—"}</b></div></div>${v[5]?`<p style="margin-bottom:0"><a href="${v[5]}" target="_blank" rel="noopener">Official source ↗</a></p>`:""}</div>
+    <div style="text-align:right"><div class="vbig num">${v[1]?money(v[1]):"Free"}</div><span class="note">per person</span><div style="margin-top:8px">${v[2]&&daysOut-v[2]<7?'<span class="pill bad">Tight on time</span>':'<span class="pill good">On track</span>'}</div></div></section>`}).join(""):`<section class="panel"><b>Domestic trip.</b> No visa needed.</section>`}
+  <section class="panel"><div class="vfilters"><input id="vq" placeholder="Search a country" value="${esc(visaQ)}" aria-label="Search country"><select id="vs" aria-label="Sort"><option value="name">Sort: A–Z</option><option value="cost">Sort: cheapest</option><option value="time">Sort: fastest</option></select><span class="note"><span class="pill good">Free / on arrival</span> <span class="pill warn">Apply online</span> <span class="pill bad">Embassy visa</span></span></div>
+  <div class="tbl-wrap" style="margin-top:10px"><table><thead><tr><th>Country</th><th>Entry</th><th class="r">Cost pp</th><th class="r">Processing</th><th>Stay</th><th>Notes</th></tr></thead><tbody id="vbody"></tbody></table></div></section>`}
+function visaRows(J){const mine=new Set(destCountries(J));const dests=Object.keys(VISA).filter(c=>c!=="IN"&&ccName(c).toLowerCase().includes(visaQ.toLowerCase()));
+  dests.sort((a,b)=>visaSort==="cost"?VISA[a][1]-VISA[b][1]:visaSort==="time"?VISA[a][2]-VISA[b][2]:ccName(a).localeCompare(ccName(b)));
+  return dests.map(c=>{const v=VISA[c];const cls=v[1]===0&&v[2]<=1?"good":/e-|ETA|eTA|online|registration|agent|authorisation/i.test(v[0])?"warn":"bad";return`<tr${mine.has(c)?' class="best"':""}><td><b>${esc(ccName(c))}</b></td><td><span class="pill ${cls}">${esc(v[0])}</span></td><td class="r mono">${v[1]?money(v[1]):"Free"}</td><td class="r mono">${v[2]?v[2]+" d":"—"}</td><td>${esc(v[3])}</td><td class="note" style="min-width:220px">${esc(v[4])}${v[5]?` <a href="${v[5]}" target="_blank" rel="noopener">Source ↗</a>`:""}</td></tr>`}).join("")||`<tr><td colspan="6" class="note">No country matches "${esc(visaQ)}".</td></tr>`}
+after.visa=J=>{const up=()=>$("#vbody").innerHTML=visaRows(J);up();$("#vs").value=visaSort;$("#vq").addEventListener("input",e=>{visaQ=e.target.value;up()});$("#vs").addEventListener("change",e=>{visaSort=e.target.value;up()})};
+
+/* Holidays */
+function holSel(J){const base=S.holSel&&S.holSel.length?S.holSel:[...new Set([ORIGIN().cc,...J.stops.map(s=>s.c.cc),"US","GB"])];return base.filter(c=>HOL[c]).slice(0,8)}
+function longWeekends(cc){const we=WEEKEND[cc]||[0,6];const set=new Set((HOL[cc]||[]).map(h=>h[0]));const isOff=d=>we.includes(d.getDay())||set.has(iso(d));const out=[];const seen=new Set();
+  for(const [ds,name] of HOL[cc]||[]){const d=parse(ds);if(d<TODAY||we.includes(d.getDay()))continue;let best=null;
+    for(let lb=0;lb<=2;lb++)for(let la=0;la<=2-lb;la++){let s=addD(d,-lb),e=addD(d,la);while(isOff(addD(s,-1)))s=addD(s,-1);while(isOff(addD(e,1)))e=addD(e,1);let leave=0;for(let x=new Date(s);x<=e;x=addD(x,1))if(!isOff(x))leave++;const len=diffD(s,e)+1;if(len>=3&&(!best||len-leave*1.5>best.len-best.leave*1.5))best={s,e,len,leave,name}}
+    if(best){const k=iso(best.s);if(!seen.has(k)){seen.add(k);out.push(best)}}}return out.slice(0,10)}
+function vHolidays(J){const sel=holSel(J);const months=[];for(let i=0;i<14;i++){const m=new Date(TODAY.getFullYear(),TODAY.getMonth()+i,1);if(m.getFullYear()>2027)break;months.push(m)}
+  const curM=S.holMonth||iso(new Date(J.dep.getFullYear(),J.dep.getMonth(),1));const mm=parse(curM);const all=Object.keys(HOL).sort((a,b)=>ccName(a).localeCompare(ccName(b)));
+  const home=ORIGIN().cc;const lws=longWeekends(home);const first=new Date(mm.getFullYear(),mm.getMonth(),1),dim=new Date(mm.getFullYear(),mm.getMonth()+1,0).getDate();const dep=S.dep,ret=iso(J.ret);
+  let cells=DOW.map(d=>`<div class="h">${d}</div>`).join("");for(let i=0;i<first.getDay();i++)cells+=`<div class="c out"></div>`;
+  for(let day=1;day<=dim;day++){const dt=new Date(mm.getFullYear(),mm.getMonth(),day),ds=iso(dt);const hs=sel.map((c,ci)=>({c,ci,h:(HOL[c]||[]).find(h=>h[0]===ds)})).filter(x=>x.h);
+    cells+=`<div class="c ${ds>=dep&&ds<=ret?"trip":""} ${dt.getDay()%6===0?"we":""}" title="${esc(hs.map(x=>`${ccName(x.c)}: ${x.h[1]}`).join("\n"))}"><span class="dn">${day}</span><span class="hs">${hs.map(x=>`<s style="background:${HOL_COLORS[x.ci]}"></s>`).join("")}</span>${hs.slice(0,2).map(x=>`<span class="hn">${esc(x.h[1])}</span>`).join("")}</div>`}
+  const list=sel.flatMap((c,ci)=>(HOL[c]||[]).filter(h=>h[0].startsWith(curM.slice(0,7))).map(h=>({c,ci,h}))).sort((a,b)=>a.h[0].localeCompare(b.h[0]));
+  return`<div class="sec-head"><div><h2>World holiday calendar</h2><p>Public holidays for ${Object.keys(HOL).length} countries through Dec 2027. Dodge crowds abroad and stretch your leave at home. An asterisk marks dates that depend on the moon sighting.</p></div></div>
+  <section class="panel"><div class="row" style="justify-content:space-between"><div class="chips" id="holChips">${sel.map((c,i)=>`<button class="chip" aria-pressed="true" data-c="${c}"><s style="background:${HOL_COLORS[i]}"></s>${esc(ccName(c))} ✕</button>`).join("")}</div>
+    <div class="row"><select id="holAdd" class="btn small" aria-label="Add country"><option value="">+ Add country</option>${all.filter(c=>!sel.includes(c)).map(c=>`<option value="${c}">${esc(ccName(c))}</option>`).join("")}</select><select id="holMonth" class="btn small" aria-label="Month">${months.map(m=>`<option value="${iso(m)}" ${iso(m)===curM?"selected":""}>${MON[m.getMonth()]} ${m.getFullYear()}</option>`).join("")}</select></div></div>
+    <div class="cal" style="margin-top:14px">${cells}</div><p class="note">Shaded days are your trip.</p>
+    <div>${list.length?list.map(x=>`<div class="lw" style="grid-template-columns:auto 1fr auto"><span class="d">${DOW[parse(x.h[0]).getDay()]}<b>${parse(x.h[0]).getDate()}</b></span><span><b>${esc(x.h[1])}</b></span><span class="pill"><s style="width:8px;height:8px;border-radius:50%;background:${HOL_COLORS[x.ci]};display:inline-block"></s>${esc(ccName(x.c))}</span></div>`).join(""):`<p class="note">No public holidays this month in the selected countries.</p>`}</div></section>
+  <section class="panel"><h3>Long weekends in ${esc(ccName(home))}</h3><p class="note" style="margin-top:0">Holidays next to a weekend, with the fewest leave days for the longest break. "Plan" starts your trip that day.</p>
+    ${lws.length?lws.map(l=>`<div class="lw"><span class="d">${MON[l.s.getMonth()]}<b>${l.s.getDate()}</b></span><div><b>${l.len} days off</b> · ${l.leave?`take ${l.leave} day${l.leave>1?"s":""} of leave`:"no leave needed"}<div class="note">${esc(l.name)} · ${DOW[l.s.getDay()]} ${fmtD(l.s)} – ${DOW[l.e.getDay()]} ${fmtD(l.e)}</div></div><button class="btn small" data-s="${iso(l.s)}" data-len="${l.len}">Plan</button></div>`).join(""):`<p class="note">No upcoming long weekends found.</p>`}</section>`}
+after.holidays=J=>{
+  $("#holChips").addEventListener("click",e=>{const b=e.target.closest(".chip");if(!b)return;S.holSel=holSel(J).filter(c=>c!==b.dataset.c);if(!S.holSel.length)S.holSel=[ORIGIN().cc];save();render()});
+  $("#holAdd").addEventListener("change",e=>{if(!e.target.value)return;const s=holSel(J);if(s.length>=8){toast("Up to 8 countries at once");return}S.holSel=[...s,e.target.value];save();render()});
+  $("#holMonth").addEventListener("change",e=>{S.holMonth=e.target.value;save();render()});
+  document.querySelectorAll("[data-s]").forEach(b=>b.addEventListener("click",()=>{let s=parse(b.dataset.s);if(s<=TODAY)s=addD(TODAY,1);S.dep=iso(s);const len=+b.dataset.len-1;if(S.stops.length===1)S.stops[0].n=Math.max(1,len);S.holMonth=null;syncForm();save();location.hash="decide";toast("Trip dates updated")}))};
+
+/* Share */
+function shareText(){const J=journey();const c=costs(J);const v=verdict(J);const plan=getPlan(J);const O=ORIGIN();
+  const lines=[`✈️ ${O.city} → ${J.stops.map(s=>`${sname(s.c)} (${s.n}n)`).join(" → ")}${S.trip==="round"?` → ${O.city}`:""}`,`📅 ${fmtD(J.dep)} – ${fmtDY(J.ret)} · ${J.nights} nights · ${S.adults} traveller${S.adults>1?"s":""}`,``,`Getting around:`];
+  J.legs.forEach(l=>lines.push(`• ${fmtD(l.date)} ${sname(l.from)} → ${sname(l.to)}: ${l.segs.map(segLabel).join(" + ")}`));
+  lines.push(``,`Hotels: ${J.stops.map(st=>`${sname(st.c)} ~${money(hotelBest(st).night)}/night`).join(", ")}`);
+  destCountries(J).forEach(cc=>{const vi=visaOf(cc);lines.push(`Visa ${ccName(cc)}: ${vi[0]}${vi[1]?` ~${money(vi[1])} pp`:""}`)});
+  lines.push(`Estimated total: ${money(c.total)} (${money(c.total/S.adults)} pp)`,`Trip score: ${v.score}/100 · ${v.head}`,``,`Day plan:`);
+  plan.forEach((d,i)=>lines.push(`Day ${i+1} ${fmtD(addD(J.dep,i))} · ${sname(CITY[d.city])}: ${d.items.map(x=>x.x).join(" · ")}`));
+  lines.push(``,`Planned on Loop Commute`,`#travel #${sname(J.stops[0].c).replace(/[^A-Za-z]/g,"")} #loopcommute`);return lines.join("\n")}
+function vShare(J){const t=shareText();const enc=encodeURIComponent(t);
+  return`<div class="sec-head"><div><h2>Share the plan</h2><p>Send the route, costs and day plan to friends and family, or post a story card.</p></div></div>
+  <div class="share-grid"><section class="panel"><h3>Send</h3><div class="share-btns">
+    <a class="sbtn" href="https://wa.me/?text=${enc}" target="_blank" rel="noopener"><span class="mk" style="background:#25D366">WA</span>WhatsApp</a>
+    <a class="sbtn" href="https://t.me/share/url?url=${encodeURIComponent("https://www.skyscanner.co.in")}&text=${enc}" target="_blank" rel="noopener"><span class="mk" style="background:#229ED9">TG</span>Telegram</a>
+    <a class="sbtn" href="https://twitter.com/intent/tweet?text=${encodeURIComponent(t.split("\n").slice(0,3).join("\n").slice(0,250))}" target="_blank" rel="noopener"><span class="mk" style="background:#111">X</span>X (Twitter)</a>
+    <a class="sbtn" href="https://www.linkedin.com/feed/?shareActive=true&text=${enc}" target="_blank" rel="noopener"><span class="mk" style="background:#0A66C2">in</span>LinkedIn</a>
+    <button class="sbtn" id="copyBtn" type="button"><span class="mk" style="background:var(--ink);color:var(--surface)">⧉</span>Copy text</button></div>
+    <label class="eyebrow" for="shareTxt" style="display:block;margin-top:16px">Message</label><textarea class="share" id="shareTxt" readonly>${esc(t)}</textarea><p class="note">For email or SMS, copy the text and paste it into your app.</p></section>
+  <section class="panel"><h3>Instagram story card</h3><p class="note" style="margin-top:0">Instagram has no web share link. Save the card, then post it from the Instagram app with the caption below.</p>
+    <img class="story" id="story" alt="Story card for this trip"><div class="row" style="margin-top:12px"><button class="btn primary" id="saveStory" hidden>Save image</button><button class="btn" id="copyCap">Copy caption</button><a class="btn" href="https://www.instagram.com/" target="_blank" rel="noopener">Open Instagram ↗</a></div>
+    <p class="note">On a phone, press and hold the card to save it.</p></section></div>`}
+let DL=null,dlTried=false;
+after.share=async J=>{const ta=$("#shareTxt");$("#copyBtn").addEventListener("click",()=>copy(ta.value,ta));
+  const cap=`${J.stops.map(s=>sname(s.c)).join(" → ")} · ${fmtD(J.dep)}–${fmtD(J.ret)} ✈️ ${J.nights} nights, est. ${money(costs(J).total/S.adults)} per person. #travel #loopcommute`;
+  $("#copyCap").addEventListener("click",()=>copy(cap));const url=storyCard(J);$("#story").src=url;
+  if(!dlTried){dlTried=true;try{DL=window.claude?await window.claude.use("downloads"):null}catch(e){DL=null}}
+  const btn=$("#saveStory");if(DL&&btn){btn.hidden=false;btn.addEventListener("click",async()=>{try{const blob=await (await fetch(url)).blob();await DL.save({filename:`loop-commute-${S.stops.map(s=>s.id).join("-")}.png`,data:blob});toast("Saved")}catch(e){if(e&&e.code==="declined")return;toast("Couldn't save here. Press and hold the card instead.")}})}};
+function storyCard(J){const W=1080,H=1920,cv=document.createElement("canvas");cv.width=W;cv.height=H;const g=cv.getContext("2d");const c=costs(J);const v=verdict(J);const O=ORIGIN();
+  g.fillStyle="#13202E";g.fillRect(0,0,W,H);g.strokeStyle="#22344A";g.lineWidth=2;for(let y=0;y<H;y+=80){g.beginPath();g.moveTo(0,y);g.lineTo(W,y);g.stroke()}
+  g.fillStyle="#D9822B";g.fillRect(0,0,W,16);g.fillStyle="#9DB0C4";g.font="600 34px 'JetBrains Mono',monospace";g.fillText("LOOP COMMUTE · TRIP PLAN",80,130);
+  const codes=[O.id,...J.stops.map(s=>s.c.id)].concat(S.trip==="round"?[O.id]:[]);const rows=Math.ceil(codes.length/2);
+  codes.forEach((code,i)=>{const col=i%2,row=Math.floor(i/2);const x=80+col*470,y=190+row*150;g.fillStyle="#1C2D40";roundRect(g,x,y,330,120,14);g.fill();g.fillStyle="#F3E6CC";g.font="600 84px 'JetBrains Mono',monospace";g.fillText(code,x+32,y+90);g.fillStyle="#D9822B";g.font="700 40px sans-serif";if(i<codes.length-1)g.fillText(col===0?"→":"↙",x+352,y+76)});
+  let y=190+rows*150+60;g.fillStyle="#F3E6CC";g.font="800 64px 'Big Shoulders Display',sans-serif";const title=J.stops.map(s=>sname(s.c).toUpperCase()).join(" · ");wrapText(g,title,80,y,W-160,70);y+=Math.ceil(g.measureText(title).width/(W-160))*70+10;
+  g.fillStyle="#9DB0C4";g.font="500 38px Figtree,sans-serif";g.fillText(`${fmtD(J.dep)} – ${fmtDY(J.ret)} · ${J.nights} nights · ${S.adults} pax`,80,y);y+=90;
+  const items=[["FLIGHTS",money(c.items[0].v)],["TRANSFERS",money(c.items[1].v)],["HOTELS",money(c.items[2].v)],["FOOD",money(c.items[3].v)],["EST. TOTAL",money(c.total)]];
+  items.forEach((r,i)=>{const yy=y+i*105;g.strokeStyle="#2B3E54";g.setLineDash([10,10]);g.beginPath();g.moveTo(80,yy+36);g.lineTo(W-80,yy+36);g.stroke();g.setLineDash([]);g.fillStyle="#9DB0C4";g.font="600 30px 'JetBrains Mono',monospace";g.fillText(r[0],80,yy);g.fillStyle=i===4?"#D9822B":"#F3E6CC";g.font="700 46px 'JetBrains Mono',monospace";g.textAlign="right";g.fillText(r[1],W-80,yy+6);g.textAlign="left"});
+  g.fillStyle="#D9822B";roundRect(g,80,1720,W-160,110,55);g.fill();g.fillStyle="#1B1206";g.font="800 52px 'Big Shoulders Display',sans-serif";g.textAlign="center";g.fillText(`${v.head.toUpperCase()} · ${v.score}/100`,W/2,1793);g.textAlign="left";return cv.toDataURL("image/png")}
+function wrapText(g,t,x,y,w,lh){const words=t.split(" ");let line="";for(const wd of words){const test=line?line+" "+wd:wd;if(g.measureText(test).width>w&&line){g.fillText(line,x,y);line=wd;y+=lh}else line=test}g.fillText(line,x,y)}
+function roundRect(g,x,y,w,h,r){g.beginPath();g.moveTo(x+r,y);g.arcTo(x+w,y,x+w,y+h,r);g.arcTo(x+w,y+h,x,y+h,r);g.arcTo(x,y+h,x,y,r);g.arcTo(x,y,x+w,y,r);g.closePath()}
+
+/* ---------------- Boot ---------------- */
+initForm();render();window.addEventListener("hashchange",()=>{render();window.scrollTo({top:0})});
+
+</script>
+
+<script>if("serviceWorker" in navigator&&location.protocol==="https:"&&!window.Capacitor){navigator.serviceWorker.register("sw.js").catch(()=>{})}</script>
+</body>
+</html>
